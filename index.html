@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Diagnóstico de indicadores para farmácias de manipulação, com plano de ação. Criado por Moisés Carvalho.">
+<style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Diagnóstico de Indicadores</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: abas (Diagnóstico, Plano de ação, Painel do responsável). Diagnóstico em duas colunas: formulário e resultados ao vivo. */
+:root{
+  --bg:#F3F6F7; --surface:#FFFFFF; --surface2:#EAF0F2; --line:#D5DFE3;
+  --fg:#12232B; --muted:#53666F; --accent:#0B7C86; --accent-ink:#FFFFFF; --accent-soft:#DDF1F3;
+  --good:#17784C; --good-bg:#DFF3E8; --warn:#8F5A00; --warn-bg:#FBEBC8; --bad:#B3261E; --bad-bg:#FBE0DD;
+  --font-display:"Space Grotesk","Inter",system-ui,sans-serif; --font-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E171B; --surface:#16232A; --surface2:#1D2D35; --line:#2B3F49;
+  --fg:#E5EEF1; --muted:#9DB1BA; --accent:#4DC2CC; --accent-ink:#06262A; --accent-soft:#16363C;
+  --good:#5FD39A; --good-bg:#14352A; --warn:#F0B84A; --warn-bg:#3A2D0E; --bad:#FF8C82; --bad-bg:#40191A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E171B; --surface:#16232A; --surface2:#1D2D35; --line:#2B3F49;
+  --fg:#E5EEF1; --muted:#9DB1BA; --accent:#4DC2CC; --accent-ink:#06262A; --accent-soft:#16363C;
+  --good:#5FD39A; --good-bg:#14352A; --warn:#F0B84A; --warn-bg:#3A2D0E; --bad:#FF8C82; --bad-bg:#40191A; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--font-body);
+  padding-block:28px 96px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:0 auto}
+h1,h2,h3,h4{font-family:var(--font-display);text-wrap:balance;margin:0;line-height:1.2}
+h1{font-size:clamp(26px,4.5vw,38px);font-weight:700;letter-spacing:-.01em}
+.lead{color:var(--muted);max-width:66ch;margin:10px 0 0;font-size:16px}
+.by{margin-top:6px;font-size:14px;color:var(--muted)}.by b{color:var(--fg);font-weight:600}
+.top{display:flex;flex-direction:column;gap:6px;margin-bottom:18px}
+.eyebrow{font:600 12px/1 var(--font-body);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+p{margin:0}
+
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px;border-bottom:1px solid var(--line)}
+.tab{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;padding:10px 14px;font:600 15px var(--font-body);color:var(--muted);margin-bottom:-1px}
+.tab:hover{background:none;color:var(--fg)}
+.tab[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.tab[disabled]{opacity:.5;cursor:not-allowed}
+
+.grid{display:grid;gap:24px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:960px){.grid{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start}}
+
+.banner{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between;
+  background:var(--accent-soft);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:14px}
+.banner p{min-width:0;flex:1 1 240px}
+.progress{display:flex;align-items:center;gap:12px;margin-bottom:16px;font-size:13px;color:var(--muted)}
+.bar{flex:1;height:6px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.progress b{color:var(--fg);font-variant-numeric:tabular-nums}
+
+fieldset{margin:0 0 16px;padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;min-width:0;display:flex;flex-direction:column;gap:18px}
+.ghead h2{font-size:18px;font-weight:600}
+.ghead p{margin-top:4px;color:var(--muted);font-size:13.5px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font-weight:600;font-size:14.5px}
+.help{color:var(--muted);font-size:13px}
+.inp{display:flex;align-items:stretch;background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.inp:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 28%,transparent)}
+.inp span{display:flex;align-items:center;padding:0 12px;color:var(--muted);font-size:14px;background:var(--surface2);white-space:nowrap}
+.inp input{flex:1;min-width:0;border:0;background:transparent;color:var(--fg);font:500 16px var(--font-body);padding:11px 12px;font-variant-numeric:tabular-nums;outline:none}
+.inp input::placeholder{color:var(--muted);opacity:.7;font-weight:400}
+.warn{font-size:13px;color:var(--warn);background:var(--warn-bg);border-radius:6px;padding:6px 10px}
+.err{font-size:13.5px;color:var(--bad);background:var(--bad-bg);border-radius:6px;padding:8px 12px}
+
+button{font:600 14px var(--font-body);border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:9px 14px;cursor:pointer}
+button:hover{background:var(--surface2)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.primary:hover{filter:brightness(1.08);background:var(--accent)}
+button.big{padding:13px 18px;font-size:15.5px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+
+.finish{background:var(--surface);border:2px solid var(--accent);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:14px;margin-top:4px}
+.finish h2{font-size:19px}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--muted)}
+.check input{margin-top:3px;width:18px;height:18px;flex:none;accent-color:var(--accent)}
+
+#resultados{display:flex;flex-direction:column;gap:18px;min-width:0;scroll-margin-top:16px}
+.summary{background:var(--fg);color:var(--bg);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:10px}
+.summary h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;opacity:.75}
+.summary p{font-size:16.5px;line-height:1.5}
+.summary .per{font:600 20px var(--font-display)}
+.rgroup{display:flex;flex-direction:column;gap:10px}
+.rgroup>h3{font-size:16px;font-weight:600;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.cards{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}
+.ind{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.ind header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.ind h4{font-size:14px;font-weight:600;color:var(--muted)}
+.val{font:700 28px/1.1 var(--font-display);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.val.empty{color:var(--muted)}
+.read{font-size:14px}
+.how{margin-top:auto;padding-top:8px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--muted)}
+.how b{font-weight:600;color:var(--fg)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border-radius:99px;padding:3px 9px;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.s-good{background:var(--good-bg);color:var(--good)}.s-warn{background:var(--warn-bg);color:var(--warn)}.s-bad{background:var(--bad-bg);color:var(--bad)}.s-info{background:var(--accent-soft);color:var(--accent)}
+
+.funnel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.fr{display:grid;grid-template-columns:minmax(84px,120px) minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13.5px}
+.fr .t{height:22px;background:var(--surface2);border-radius:5px;overflow:hidden}
+.fr .t i{display:block;height:100%;background:var(--accent);border-radius:5px;min-width:2px;transition:width .25s}
+.fr b{font-variant-numeric:tabular-nums}
+.funnel p{font-size:12.5px;color:var(--muted)}
+.foot{color:var(--muted);font-size:12.5px}
+
+.jump{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--surface);border-top:1px solid var(--line);
+  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  display:flex;justify-content:space-between;align-items:center;gap:12px}
+.jump span{font-size:13px;color:var(--muted);min-width:0}
+@media (min-width:960px){.jump{display:none}}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+
+/* plano de ação */
+.plan{display:flex;flex-direction:column;gap:18px;max-width:860px}
+.plan-head{background:var(--fg);color:var(--bg);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:10px}
+.plan-head h2{font-size:clamp(22px,3.5vw,28px)}
+.plan-head p{opacity:.9;max-width:62ch}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.pcard header{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.pcard h3{font-size:19px}
+.rank{font:600 12px var(--font-body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.facts{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+.fact{background:var(--surface2);border-radius:8px;padding:10px 12px;font-size:14px}
+.fact b{display:block;font:600 11.5px var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.acoes{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.acoes li{display:flex;gap:10px;font-size:14.5px}
+.acoes li::before{content:"";flex:none;width:7px;height:7px;margin-top:8px;border-radius:2px;background:var(--accent)}
+.sub{font:600 13px var(--font-body);color:var(--muted);letter-spacing:.04em}
+.todo{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:10px}
+.todo label{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;cursor:pointer}
+.todo input{margin-top:3px;width:18px;height:18px;flex:none;accent-color:var(--accent)}
+.todo input:checked+span{text-decoration:line-through;color:var(--muted)}
+.ok{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.ok li{margin-left:18px}
+.code{width:100%;min-height:84px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;resize:vertical}
+.note{background:var(--accent-soft);border-radius:10px;padding:12px 14px;font-size:14px;display:flex;flex-direction:column;gap:8px}
+
+/* painel */
+.kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.kpi b{display:block;font:700 30px/1.1 var(--font-display);font-variant-numeric:tabular-nums}
+.kpi span{font-size:13px;color:var(--muted)}
+.panel{display:flex;flex-direction:column;gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card h3{font-size:16px}
+.days{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:4px;align-items:end;height:120px}
+.days div{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:4px;font-size:10.5px;color:var(--muted)}
+.days i{display:block;width:100%;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px}
+.days b{font-weight:600;color:var(--fg);font-size:11px}
+.two{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+td button{padding:4px 9px;font-size:12.5px}
+.stat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;font-size:14px}
+.stat b{font-variant-numeric:tabular-nums}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Diagnóstico para farmácias de manipulação</span>
+    <h1>Descubra os números que mandam na sua farmácia</h1>
+    <p class="lead">Preencha os dados de um período, veja os indicadores na hora e receba um plano de ação com metas e passos práticos. Os valores de faturamento e custos ficam só no seu navegador.</p>
+    <p class="by">Diagnóstico criado por <b>Moisés Carvalho</b></p>
+  </header>
+
+  <nav class="tabs" aria-label="Seções">
+    <button class="tab" id="tab-diag" aria-selected="true" type="button">1. Diagnóstico</button>
+    <button class="tab" id="tab-plano" aria-selected="false" type="button" disabled title="Conclua o diagnóstico para liberar">2. Plano de ação</button>
+    <button class="tab" id="tab-painel" aria-selected="false" type="button" hidden>Painel de respostas</button>
+  </nav>
+
+  <section id="view-diag">
+    <div class="grid">
+      <form id="form" autocomplete="off" novalidate>
+        <div class="banner" id="banner">
+          <p><b>Você está vendo dados de exemplo de uma farmácia fictícia.</b> Troque pelos seus números ou limpe tudo para começar do zero.</p>
+          <button type="button" id="clearEx" class="primary">Limpar e usar meus dados</button>
+        </div>
+        <div class="progress"><span><b id="pcount">0</b> de 12 números</span><div class="bar"><i id="pbar"></i></div></div>
+        <div id="fields"></div>
+
+        <div class="finish">
+          <div class="ghead"><h2>Concluir e gerar o plano de ação</h2><p>Informe só o seu primeiro nome. Não peça nem digite sobrenome, CPF, telefone ou e-mail.</p></div>
+          <div class="field">
+            <label for="f-nome">Primeiro nome</label>
+            <div class="inp"><input id="f-nome" type="text" maxlength="40" placeholder="Ex.: Mariana" autocomplete="given-name"></div>
+          </div>
+          <label class="check" for="f-aceite"><input id="f-aceite" type="checkbox"><span>Concordo em registrar meu primeiro nome e os indicadores calculados (taxas, tickets e relações) para acompanhamento. Nenhum valor bruto de faturamento ou de custos é enviado. Posso pedir a exclusão a quem me passou este link.</span></label>
+          <p class="err" id="finErr" hidden></p>
+          <div class="actions"><button type="button" class="primary big" id="concluir">Concluir e ver meu plano de ação</button></div>
+        </div>
+
+        <div class="actions" style="margin-top:16px">
+          <button type="button" id="reset">Limpar tudo</button>
+          <button type="button" id="example">Carregar exemplo</button>
+        </div>
+      </form>
+
+      <section id="resultados" aria-live="polite">
+        <div class="summary" id="summary"></div>
+        <div id="results"></div>
+        <div class="actions"><button type="button" class="primary" id="copy">Copiar resumo do diagnóstico</button></div>
+        <p class="foot" id="copied" hidden>Resumo copiado.</p>
+        <p class="foot">As etiquetas usam referências gerais de mercado. O ideal de LTV/CAC (3 ou mais) é uma regra amplamente usada. Taxas de conversão e margens variam por farmácia, por isso aparecem sem nota.</p>
+      </section>
+    </div>
+  </section>
+
+  <section id="view-plano" hidden></section>
+  <section id="view-painel" hidden></section>
+</div>
+
+<div class="jump" id="jump"><span id="jumpTxt">Veja seus resultados</span><button type="button" class="primary" id="jumpBtn">Ver resultados</button></div>
+
+<script>
+(function(){
+var GROUPS=[
+ {t:'Sobre o período',d:'Escolha um intervalo e use o mesmo em todos os números.',items:[
+  {id:'periodo',type:'text',label:'Período do diagnóstico',help:'Mês, trimestre ou ano que você está analisando.',ph:'Ex.: Outubro de 2026',ex:'Outubro de 2026'}]},
+ {t:'Vendas',d:'O que entrou no caixa e para quantas pessoas.',items:[
+  {id:'fat',type:'brl',pre:'R$',label:'Faturamento bruto',help:'Total vendido no período (manipulados e demais produtos), antes de descontar qualquer custo.',ph:'0,00',ex:185000},
+  {id:'vendas',type:'int',suf:'pedidos',label:'Número total de vendas (pedidos fechados)',help:'Quantas receitas ou pedidos foram aprovados e pagos. Um cliente que comprou 3 vezes conta 3.',ph:'0',ex:1200},
+  {id:'clientes',type:'int',suf:'clientes',label:'Clientes atendidos',help:'Quantas pessoas diferentes compraram. Cada pessoa conta uma vez só.',ph:'0',ex:780}]},
+ {t:'Atendimento e orçamentos',d:'Mostra por onde o cliente avança até comprar.',items:[
+  {id:'visitantes',type:'int',suf:'atendimentos',label:'Atendimentos ou entradas',help:'Pessoas que entraram na farmácia, chamaram no WhatsApp ou ligaram para consultar. Se não há contagem exata, estime pelo movimento do balcão.',ph:'0',ex:4200},
+  {id:'orcamentos',type:'int',suf:'orçamentos',label:'Orçamentos de receitas realizados',help:'Quantas receitas foram orçadas, tenham sido aprovadas ou não.',ph:'0',ex:2300}]},
+ {t:'Conquista de novos clientes',d:'Quanto você gastou para trazer gente que nunca tinha comprado.',items:[
+  {id:'novos',type:'int',suf:'novos',label:'Novos clientes no período',help:'Pessoas que compraram pela primeira vez na sua farmácia.',ph:'0',ex:120},
+  {id:'mkt',type:'brl',pre:'R$',label:'Investimento em marketing',help:'Anúncios, redes sociais, materiais impressos, brindes, eventos e ações de relacionamento.',ph:'0,00',ex:14000},
+  {id:'vendasNovos',type:'brl',pre:'R$',label:'Investimento comercial para novos clientes',help:'Visitas a consultórios, comissões por indicação e o tempo da equipe dedicado a captar clientes novos.',ph:'0,00',ex:9000}]},
+ {t:'Custos',d:'O que você paga para a farmácia funcionar.',items:[
+  {id:'cf',type:'brl',pre:'R$',label:'Custos fixos totais',help:'Pagos todo mês mesmo sem vender: aluguel, salários, farmacêutico responsável, laboratório e controle de qualidade, licenças, software, contador.',ph:'0,00',ex:56000},
+  {id:'cv',type:'brl',pre:'R$',label:'Custos variáveis totais',help:'Mudam conforme você vende: insumos e matérias-primas, embalagens, impostos sobre a venda, comissões, taxas de cartão, frete e entrega.',ph:'0,00',ex:112000}]},
+ {t:'Relacionamento com o cliente',d:'Estimativas de quanto um cliente fica com você.',items:[
+  {id:'freq',type:'dec',suf:'compras por ano',label:'Compras médias por cliente por ano',help:'Em média, quantas vezes um cliente volta a comprar em 12 meses. A renovação de um tratamento conta como nova compra.',ph:'0',ex:2.8},
+  {id:'tempo',type:'dec',suf:'anos',label:'Tempo médio de relacionamento',help:'Por quantos anos, em média, um cliente continua comprando com você. Pode usar decimais (1,5).',ph:'0',ex:1.8}]}
+];
+var IDS=[],META={};
+GROUPS.forEach(function(g){g.items.forEach(function(i){META[i.id]=i;if(i.id!=='periodo')IDS.push(i.id)})});
+var KEY='diag-farmacia-v2',CHK='diag-farmacia-chk-v2';
+var state={vals:{},example:true,nome:'',aceite:false,done:false,reg:null,code:''};
+var db=null,usr=null,isAdmin=false,unsubPainel=null;
+
+function parse(s){
+  if(s==null)return null;s=String(s).trim().replace(/[^\d.,]/g,'');if(!s)return null;
+  if(s.indexOf(',')>=0){s=s.replace(/\./g,'').replace(',','.')}
+  else{var p=s.split('.');if(p.length>2)s=p.join('');else if(p.length===2&&p[1].length===3)s=p.join('')}
+  var n=parseFloat(s);return isFinite(n)?n:null;
+}
+var nf2=new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+var nf0=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2});
+var nf1=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1});
+var brl=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
+var brl0=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+function fmtInput(id,n){if(n==null)return '';return META[id].type==='brl'?nf2.format(n):nf0.format(n)}
+function pct(v,d){return new Intl.NumberFormat('pt-BR',{minimumFractionDigits:d==null?1:d,maximumFractionDigits:d==null?1:d}).format(v*100)+'%'}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function num(id){return META[id].type==='text'?null:parse(state.vals[id])}
+function $(id){return document.getElementById(id)}
+
+/* ---------- formulário ---------- */
+var box=$('fields');
+GROUPS.forEach(function(g){
+  var fs=document.createElement('fieldset');
+  var h='<div class="ghead"><h2>'+g.t+'</h2><p>'+g.d+'</p></div>';
+  g.items.forEach(function(i){
+    h+='<div class="field"><label for="f-'+i.id+'">'+i.label+'</label><p class="help" id="h-'+i.id+'">'+i.help+'</p>'+
+    '<div class="inp">'+(i.pre?'<span>'+i.pre+'</span>':'')+
+    '<input id="f-'+i.id+'" data-id="'+i.id+'" type="text" '+(i.type==='text'?'':'inputmode="decimal" ')+'placeholder="'+i.ph+'" aria-describedby="h-'+i.id+' w-'+i.id+'">'+
+    (i.suf?'<span>'+i.suf+'</span>':'')+'</div><p class="warn" id="w-'+i.id+'" hidden></p></div>';
+  });
+  fs.innerHTML=h;box.appendChild(fs);
+});
+function loadExample(){state.vals={};IDS.concat('periodo').forEach(function(id){var e=META[id].ex;state.vals[id]=META[id].type==='text'?e:fmtInput(id,e)});state.example=true}
+function clearAll(){state.vals={};state.example=false}
+function syncInputs(){box.querySelectorAll('input').forEach(function(el){el.value=state.vals[el.dataset.id]||''});$('f-nome').value=state.nome||'';$('f-aceite').checked=!!state.aceite}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function restore(){try{var s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.vals){state=Object.assign(state,s);return true}}catch(e){}return false}
+
+box.addEventListener('input',function(e){var id=e.target.dataset.id;if(!id)return;state.vals[id]=e.target.value;state.example=false;update()});
+box.addEventListener('focusout',function(e){var id=e.target.dataset.id;if(!id||META[id].type==='text')return;var n=parse(e.target.value);e.target.value=fmtInput(id,n);state.vals[id]=e.target.value;update()});
+$('form').addEventListener('submit',function(e){e.preventDefault()});
+$('f-nome').addEventListener('input',function(e){state.nome=e.target.value;save()});
+$('f-aceite').addEventListener('change',function(e){state.aceite=e.target.checked;save()});
+$('reset').onclick=function(){clearAll();state.done=false;state.reg=null;syncInputs();update();showTab('diag')};
+$('clearEx').onclick=function(){clearAll();state.done=false;state.reg=null;syncInputs();update();$('f-periodo').focus()};
+$('example').onclick=function(){loadExample();syncInputs();update()};
+
+var CHECKS=[
+ ['orcamentos',function(){var a=num('orcamentos'),b=num('visitantes');return a!=null&&b!=null&&a>b?'Há mais orçamentos do que atendimentos. Confira os dois números.':''}],
+ ['vendas',function(){var a=num('vendas'),b=num('orcamentos');return a!=null&&b!=null&&b>0&&a>b?'Há mais vendas do que orçamentos. A taxa passará de 100%. Tudo bem se parte das vendas fecha sem orçamento.':''}],
+ ['clientes',function(){var a=num('clientes'),b=num('vendas');return a!=null&&b!=null&&a>b?'Clientes únicos não podem superar o número de vendas. Cada cliente compra ao menos uma vez.':''}],
+ ['novos',function(){var a=num('novos'),b=num('clientes');return a!=null&&b!=null&&a>b?'Novos clientes não podem superar os clientes atendidos.':''}],
+ ['cv',function(){var a=num('cv'),b=num('fat');return a!=null&&b!=null&&a>b?'Os custos variáveis são maiores que o faturamento. Confira os valores.':''}]
+];
+function warnings(){CHECKS.forEach(function(c){var el=$('w-'+c[0]),m=c[1]();el.textContent=m;el.hidden=!m})}
+
+/* ---------- indicadores ---------- */
+function lab(id){return META[id].label}
+var IND=[
+ {g:'Vendas e clientes',id:'ticket',name:'Ticket médio por venda',fmt:'brl',how:'Faturamento ÷ número de vendas',nums:['fat'],dens:['vendas'],f:function(){return num('fat')/num('vendas')},
+  read:function(v){return 'Cada pedido fechado rende em média '+brl.format(v)+'.'}},
+ {g:'Vendas e clientes',id:'ticketCli',name:'Ticket médio por cliente',fmt:'brl',how:'Faturamento ÷ clientes atendidos',nums:['fat'],dens:['clientes'],f:function(){return num('fat')/num('clientes')},
+  read:function(v){return 'Cada cliente gastou em média '+brl.format(v)+' no período.'}},
+ {g:'Do atendimento à venda',id:'c1',name:'Atendimentos que viram orçamento',fmt:'pct',how:'Orçamentos ÷ atendimentos',nums:['orcamentos'],dens:['visitantes'],f:function(){return num('orcamentos')/num('visitantes')},
+  read:function(v){return 'De cada 100 atendimentos, '+nf1.format(Math.round(v*1000)/10)+' geram um orçamento.'}},
+ {g:'Do atendimento à venda',id:'c2',name:'Orçamentos que viram venda',fmt:'pct',how:'Vendas ÷ orçamentos',nums:['vendas'],dens:['orcamentos'],f:function(){return num('vendas')/num('orcamentos')},
+  read:function(v){return 'De cada 100 orçamentos, '+nf1.format(Math.round(v*1000)/10)+' são aprovados.'}},
+ {g:'Do atendimento à venda',id:'c3',name:'Atendimentos que viram venda',fmt:'pct',how:'Vendas ÷ atendimentos',nums:['vendas'],dens:['visitantes'],f:function(){return num('vendas')/num('visitantes')},
+  read:function(v){return 'De cada 100 atendimentos, '+nf1.format(Math.round(v*1000)/10)+' terminam em venda.'}},
+ {g:'Custo e valor de um cliente',id:'cac',name:'CAC: custo para conquistar um cliente',fmt:'brl',how:'(Marketing + comercial para novos clientes) ÷ novos clientes',nums:['mkt','vendasNovos'],dens:['novos'],f:function(){return (num('mkt')+num('vendasNovos'))/num('novos')},
+  read:function(v){return 'Trazer cada cliente novo custou '+brl.format(v)+'.'}},
+ {g:'Custo e valor de um cliente',id:'ltv',name:'LTV: receita de um cliente',fmt:'brl',how:'Ticket médio × compras por ano × anos de relacionamento',nums:['fat','freq','tempo'],dens:['vendas'],f:function(){return num('fat')/num('vendas')*num('freq')*num('tempo')},
+  read:function(v){return 'Ao longo do relacionamento, um cliente gera cerca de '+brl.format(v)+' de faturamento.'}},
+ {g:'Custo e valor de um cliente',id:'ltvl',name:'LTV em lucro',fmt:'brl',how:'LTV de receita × margem de contribuição',needs:['ltv','margem'],f:function(r){return r.ltv*r.margem},
+  read:function(v){return 'Desse total, sobram '+brl.format(v)+' por cliente depois dos custos variáveis.'}},
+ {g:'Custo e valor de um cliente',id:'ratio',name:'Relação LTV / CAC',fmt:'x',how:'LTV em lucro ÷ CAC',needs:['ltvl','cac'],block:function(r){return r.cac>0?'':'Informe um investimento maior que zero em marketing ou comercial.'},f:function(r){return r.ltvl/r.cac},
+  status:function(v){return v>=3?['good','Saudável']:v>=1?['warn','Atenção']:['bad','Crítico']},
+  read:function(v){var x=nf1.format(Math.round(v*10)/10);return v>=3?'Cada R$ 1 investido para trazer um cliente volta como R$ '+x+' em lucro. O modelo se sustenta.':v>=1?'Cada R$ 1 investido volta como R$ '+x+' em lucro. Cobre o custo, mas o ideal é 3 ou mais.':'Cada R$ 1 investido volta como apenas R$ '+x+'. Trazer clientes está custando mais do que eles devolvem.'}},
+ {g:'Rentabilidade',id:'margem',name:'Margem de contribuição',fmt:'pct',how:'(Faturamento − custos variáveis) ÷ faturamento',nums:['fat','cv'],dens:['fat'],f:function(){return (num('fat')-num('cv'))/num('fat')},
+  read:function(v){return v>0?'De cada R$ 100 vendidos, R$ '+nf1.format(Math.round(v*1000)/10)+' sobram para pagar os custos fixos e gerar lucro.':'Os custos variáveis consomem todo o faturamento. Não sobra nada para os custos fixos.'}},
+ {g:'Rentabilidade',id:'pe',name:'Ponto de equilíbrio',fmt:'brl',how:'Custos fixos ÷ margem de contribuição',needs:['margem'],nums:['cf'],block:function(r){return r.margem>0?'':'A margem de contribuição precisa ser positiva para calcular.'},f:function(r){return num('cf')/r.margem},
+  read:function(v){return 'Você precisa faturar '+brl.format(v)+' no período para cobrir os custos fixos e não ter prejuízo.'}},
+ {g:'Rentabilidade',id:'seg',name:'Folga sobre o equilíbrio',fmt:'pct',how:'(Faturamento − ponto de equilíbrio) ÷ faturamento',needs:['pe'],nums:['fat'],dens:['fat'],f:function(r){return (num('fat')-r.pe)/num('fat')},
+  status:function(v){return v>=0.2?['good','Confortável']:v>=0?['warn','Apertado']:['bad','Abaixo']},
+  read:function(v){return v>=0?'O faturamento está '+pct(v,0)+' acima do ponto de equilíbrio. É o quanto as vendas podem cair antes de dar prejuízo.':'O faturamento ficou '+pct(-v,0)+' abaixo do ponto de equilíbrio e não cobriu os custos fixos.'}}
+];
+var ORDER=['ticket','ticketCli','c1','c2','c3','cac','ltv','margem','ltvl','ratio','pe','seg'];
+function fmtVal(i,v){return i.fmt==='brl'?brl.format(v):i.fmt==='pct'?pct(v):nf1.format(Math.round(v*10)/10)+'x'}
+function indById(id){return IND.filter(function(x){return x.id===id})[0]}
+
+function compute(){
+  var R={},cards={};
+  ORDER.map(indById).forEach(function(i){
+    var miss=[],ids=(i.nums||[]).concat(i.dens||[]),c={i:i},inherit='';
+    ids.forEach(function(id){if(num(id)==null&&miss.indexOf(id)<0)miss.push(id)});
+    var names=miss.map(lab);
+    (i.needs||[]).forEach(function(n){if(R[n]==null){var d=cards[n];if(d.missing)d.missing.forEach(function(m){if(names.indexOf(m)<0)names.push(m)});else if(d.msg)inherit=d.msg}});
+    if(inherit&&!names.length){c.msg=inherit;cards[i.id]=c;return}
+    if(names.length){c.missing=names;cards[i.id]=c;return}
+    var bad=(i.dens||[]).filter(function(id){return !(num(id)>0)})[0];
+    if(bad){c.msg='Informe um valor maior que zero em "'+lab(bad)+'".';cards[i.id]=c;return}
+    if(i.block){var m=i.block(R);if(m){c.msg=m;cards[i.id]=c;return}}
+    var v=i.f(R);
+    if(!isFinite(v)){c.msg='Não foi possível calcular com esses números.';cards[i.id]=c;return}
+    R[i.id]=v;c.v=v;cards[i.id]=c;
+  });
+  return {R:R,cards:cards};
+}
+
+function summaryLines(R){
+  var L=[];
+  if(R.ratio!=null)L.push('Cada cliente novo custa '+brl.format(R.cac)+' e devolve cerca de '+brl.format(R.ltvl)+' em lucro ao longo da relação, '+nf1.format(Math.round(R.ratio*10)/10)+' vezes o valor investido.');
+  if(R.pe!=null)L.push('O ponto de equilíbrio é '+brl.format(R.pe)+'. No período você faturou '+brl.format(num('fat'))+'.');
+  else if(R.margem!=null)L.push('A margem de contribuição é '+pct(R.margem)+'. Informe os custos fixos para ver o ponto de equilíbrio.');
+  if(R.c1!=null&&R.c2!=null)L.push('A etapa do funil com menor taxa é '+(R.c1<R.c2?'a passagem de atendimento para orçamento ('+pct(R.c1)+')':'a aprovação do orçamento ('+pct(R.c2)+')')+'.');
+  else if(R.c3!=null)L.push(pct(R.c3)+' dos atendimentos terminam em venda.');
+  return L;
+}
+function funnel(){
+  var v=num('visitantes'),o=num('orcamentos'),s=num('vendas');
+  if(!(v>0)||o==null||s==null)return '<div class="funnel"><p>Preencha atendimentos, orçamentos e vendas para ver o funil.</p></div>';
+  function row(n,x){var w=Math.min(100,x/v*100);return '<div class="fr"><span>'+n+'</span><div class="t"><i style="width:'+w+'%"></i></div><b>'+nf0.format(x)+'</b></div>'}
+  return '<div class="funnel">'+row('Atendimentos',v)+row('Orçamentos',o)+row('Vendas',s)+'<p>As barras mostram quanto cada etapa representa do total de atendimentos.</p></div>';
+}
+var LAST=null;
+function render(){
+  var C=compute(),R=C.R,out='',order=[];LAST=C;
+  IND.forEach(function(i){if(order.indexOf(i.g)<0)order.push(i.g)});
+  order.forEach(function(g){
+    out+='<div class="rgroup"><h3>'+g+'</h3>';
+    if(g==='Do atendimento à venda')out+=funnel();
+    out+='<div class="cards">';
+    IND.filter(function(i){return i.g===g}).forEach(function(i){
+      var c=C.cards[i.id],pill='',val,read;
+      if(c.v!=null){
+        val='<div class="val">'+fmtVal(i,c.v)+'</div>';read=i.read(c.v);
+        if(i.status){var s=i.status(c.v);pill='<span class="pill s-'+s[0]+'">'+s[1]+'</span>'}
+      }else{
+        val='<div class="val empty">—</div>';
+        read=c.msg?c.msg:'Falta preencher: '+c.missing.map(function(m){return '<b>'+esc(m)+'</b>'}).join(', ')+'.';
+      }
+      out+='<article class="ind"><header><h4>'+i.name+'</h4>'+pill+'</header>'+val+'<p class="read">'+read+'</p><p class="how"><b>Como calculamos:</b> '+i.how+'</p></article>';
+    });
+    out+='</div></div>';
+  });
+  $('results').innerHTML=out;
+  var L=summaryLines(R),per=(state.vals.periodo||'').trim();
+  $('summary').innerHTML='<h2>Seu diagnóstico</h2>'+(per?'<div class="per">'+esc(per)+'</div>':'')+
+    (L.length?L.map(function(l){return '<p>'+l+'</p>'}).join(''):'<p>Preencha os campos ao lado e o resumo aparece aqui.</p>');
+  window.__L=L;
+}
+function update(){
+  var filled=IDS.filter(function(id){return (state.vals[id]||'').toString().trim()!==''}).length;
+  $('pcount').textContent=filled;
+  $('pbar').style.width=(filled/IDS.length*100)+'%';
+  $('banner').hidden=!state.example;
+  warnings();render();save();
+  var R=LAST.R;
+  $('jumpTxt').textContent=R.ratio!=null?'LTV/CAC: '+nf1.format(Math.round(R.ratio*10)/10)+'x':'Veja seus resultados';
+  $('tab-plano').disabled=!state.done;
+}
+
+/* ---------- copiar resumo ---------- */
+function textSummary(){
+  var C=LAST,t=['DIAGNÓSTICO DE INDICADORES'+((state.vals.periodo||'').trim()?' - '+state.vals.periodo.trim():''),''];
+  IND.forEach(function(i){var c=C.cards[i.id];t.push(i.name+': '+(c.v!=null?fmtVal(i,c.v):'não calculado'))});
+  if(window.__L.length){t.push('');t=t.concat(window.__L)}
+  return t.join('\n');
+}
+function copyText(txt,note,msg){
+  function ok(){note.textContent=msg;note.hidden=false;setTimeout(function(){note.hidden=true},2500)}
+  function fallback(){var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();var done=false;try{done=document.execCommand('copy')}catch(e){}document.body.removeChild(ta);if(done)ok();else{note.textContent='Não foi possível copiar. Selecione o texto e copie manualmente.';note.hidden=false}}
+  try{navigator.clipboard.writeText(txt).then(ok,fallback)}catch(e){fallback()}
+}
+$('copy').onclick=function(){copyText(textSummary(),$('copied'),'Resumo copiado.')};
+$('jumpBtn').onclick=function(){$('resultados').scrollIntoView({behavior:'smooth',block:'start'})};
+
+/* ---------- plano de ação ---------- */
+function buildPlan(R){
+  var A=[],fat=num('fat'),orc=num('orcamentos'),vis=num('visitantes'),vd=num('vendas'),freq=num('freq'),tempo=num('tempo');
+  var tk=R.ticket;
+  if(R.ratio!=null){
+    var s=R.ratio<1?3:R.ratio<3?2:0,cacAlvo=R.cac*0.85;
+    A.push({k:'aquisicao',t:'Custo para conquistar clientes novos',s:s,
+      diag:'Cada cliente novo custa '+brl.format(R.cac)+' e devolve '+brl.format(R.ltvl)+' em lucro ('+nf1.format(Math.round(R.ratio*10)/10)+'x). '+(s?'O ideal é 3x ou mais.':'Está acima de 3x.'),
+      meta:s?'Reduzir o CAC em 15%, de '+brl.format(R.cac)+' para '+brl.format(cacAlvo)+', e caminhar para LTV/CAC de 3x.':'Manter o LTV/CAC acima de 3x enquanto aumenta o número de clientes novos.',
+      imp:s?'Economia de cerca de '+brl0.format(0.15*(num('mkt')+num('vendasNovos')))+' por período trazendo o mesmo número de clientes novos.':'Com a relação acima de 3x, há espaço para investir um pouco mais em captação e crescer.',
+      acoes:['Pergunte em todo cadastro novo como a pessoa conheceu a farmácia (indicação de prescritor, indicação de cliente, Google, Instagram, passou na frente) e some os resultados todo mês.',
+        'Faça uma curva dos prescritores que mais enviam receitas e concentre as visitas e o material nos 20% que mais trazem pedidos.',
+        'Crie um programa de indicação: o cliente que indica um amigo ganha um benefício na próxima compra, sem pagar mídia.',
+        'Deixe o perfil da farmácia no Google atualizado (horário, telefone, fotos) e peça avaliação a cada cliente satisfeito.',
+        'Pare de pagar anúncio para quem já é cliente. Segmente as campanhas para público novo da região.',
+        'Antes de divulgar, confira as regras da Anvisa e do CRF sobre publicidade de manipulados.'],
+      ind:'CAC e LTV/CAC, medidos todo mês.'});
+  }
+  if(freq!=null&&tempo!=null&&R.ltv!=null){
+    var s2=freq<2?3:(freq<4||tempo<2)?2:0,ltvNovo=tk*(freq+0.5)*(tempo+0.5);
+    A.push({k:'recompra',t:'Recompra e permanência dos clientes',s:s2,
+      diag:'Em média cada cliente compra '+nf1.format(freq)+' vezes por ano e fica '+nf1.format(tempo)+' anos. Como muitos tratamentos são contínuos, a renovação é a maior alavanca de receita.',
+      meta:'Subir a recompra em 0,5 compra por ano (de '+nf1.format(freq)+' para '+nf1.format(freq+0.5)+') e o relacionamento em 0,5 ano.',
+      imp:'O LTV de receita por cliente subiria de '+brl0.format(R.ltv)+' para cerca de '+brl0.format(ltvNovo)+'.',
+      acoes:['Registre a data prevista de término de cada tratamento contínuo e avise o cliente 5 a 7 dias antes, por WhatsApp, oferecendo a renovação.',
+        'Ofereça a entrega programada de tratamentos de uso contínuo, com o cliente confirmando por mensagem a cada ciclo.',
+        'Faça contato de pós-venda 7 a 15 dias após a primeira compra para tirar dúvidas e reforçar a orientação do farmacêutico.',
+        'Monte opções de tratamento para 30, 60 e 90 dias, com condição melhor nos períodos maiores.',
+        'Crie um clube de benefícios simples (pontos ou desconto progressivo) para quem renova em dia.',
+        'Liste os clientes que compraram há mais de 90 dias sem voltar e faça um contato de retorno.'],
+      ind:'Compras por cliente por ano e tempo de relacionamento.'});
+  }
+  if(R.c2!=null){
+    var s3=R.c2<0.4?3:R.c2<0.6?2:0,alvo=Math.min(R.c2+0.05,0.95),extra=orc*0.05;
+    A.push({k:'conversao',t:'Aprovação de orçamentos',s:s3,
+      diag:'De cada 100 orçamentos, '+nf1.format(Math.round(R.c2*1000)/10)+' viram venda. Os demais saem sem comprar.',
+      meta:s3?'Subir a aprovação de '+pct(R.c2)+' para '+pct(alvo)+' (+5 pontos percentuais).':'Manter a aprovação acima de '+pct(R.c2,0)+' e ganhar mais 2 pontos percentuais.',
+      imp:s3?'Cerca de '+nf0.format(Math.round(extra))+' vendas a mais e '+brl0.format(extra*tk)+' de faturamento por período, sem gastar mais para atrair gente.':'Cada ponto percentual a mais vale cerca de '+brl0.format(orc*0.01*tk)+' de faturamento por período.',
+      acoes:['Entregue o orçamento no mesmo atendimento, com valor, prazo de entrega e forma de pagamento claros. Orçamento que "fica de ficar pronto" costuma esfriar.',
+        'Faça retorno em até 24 horas para todo orçamento não aprovado, por WhatsApp, perguntando se ficou alguma dúvida.',
+        'Mostre o valor por dia de tratamento e ofereça parcelamento ou Pix, em vez de apresentar só o total.',
+        'Anote o motivo de cada orçamento perdido (preço, prazo, dúvida, foi para outra farmácia) e revise a lista toda semana.',
+        'Treine o balcão para explicar o que diferencia a farmácia: matéria-prima de fornecedor qualificado, controle de qualidade e acompanhamento do farmacêutico. Nunca sugira alterar a prescrição.'],
+      ind:'Taxa de orçamentos aprovados, semanal.'});
+  }
+  if(R.c1!=null){
+    var s4=R.c1<0.1?3:R.c1<0.25?2:0,extraO=vis*0.05;
+    A.push({k:'funil',t:'Atendimentos que viram orçamento',s:s4,
+      diag:'De cada 100 atendimentos, '+nf1.format(Math.round(R.c1*1000)/10)+' geram um orçamento.',
+      meta:s4?'Subir de '+pct(R.c1)+' para '+pct(Math.min(R.c1+0.05,0.9))+' (+5 pontos percentuais).':'Manter a taxa e acompanhar o canal de WhatsApp separadamente.',
+      imp:s4?'Cerca de '+nf0.format(Math.round(extraO))+' orçamentos a mais por período, o que vale perto de '+brl0.format(extraO*(R.c2||0)*tk)+' em faturamento com a aprovação atual.':'Um funil saudável nesta etapa dá margem para focar na aprovação e na recompra.',
+      acoes:['Treine o balcão para perguntar a cada cliente se ele usa algum tratamento contínuo ou tem receita para manipular.',
+        'Divulgue o orçamento por foto da receita no WhatsApp, com resposta rápida em horário comercial.',
+        'Deixe à vista cartazes e cardápio das categorias de maior procura (dermatologia, nutrição, saúde da mulher, entre outras) com os canais de contato.',
+        'Combine com prescritores parceiros um jeito simples de a receita chegar à farmácia, por foto ou por leitura de QR code.'],
+      ind:'Orçamentos ÷ atendimentos, por semana.'});
+  }
+  if(R.seg!=null){
+    var s5=R.seg<0?3:R.seg<0.2?2:0,fatAlvo=R.pe/0.8;
+    A.push({k:'equilibrio',t:'Folga sobre o ponto de equilíbrio',s:s5,
+      diag:'O ponto de equilíbrio é '+brl.format(R.pe)+' e o faturamento foi '+brl.format(fat)+' (folga de '+pct(R.seg,0)+').',
+      meta:s5?'Chegar a uma folga de 20%: faturar cerca de '+brl0.format(fatAlvo)+' por período, ou reduzir os custos fixos na mesma proporção.':'Manter a folga acima de 20% e criar uma reserva de caixa.',
+      imp:s5&&fatAlvo>fat?'Faltam cerca de '+brl0.format(fatAlvo-fat)+' por período para a folga de 20%.':'Com folga confortável, a farmácia suporta uma queda nas vendas sem entrar no prejuízo.',
+      acoes:['Divida o ponto de equilíbrio pelos dias de funcionamento e acompanhe, todo dia, se o faturamento acumulado está acima da linha.',
+        'Revise os maiores custos fixos (aluguel, folha, contratos de software, internet, energia) e renegocie ou ajuste a escala da equipe.',
+        'Aumente o uso de horários e dias de menor movimento, por exemplo com entrega e atendimento por WhatsApp.',
+        'Antes de comprar equipamento ou ampliar o laboratório, confirme que a capacidade atual já está ocupada.',
+        'Faça uma reunião semanal de 20 minutos com caixa, faturamento e ponto de equilíbrio na mesa.'],
+      ind:'Faturamento acumulado ÷ ponto de equilíbrio, diário.'});
+  }
+  if(R.margem!=null){
+    var s6=R.margem<0.2?3:R.margem<0.3?2:0;
+    A.push({k:'margem',t:'Margem de contribuição',s:s6,
+      diag:'De cada R$ 100 vendidos, R$ '+nf1.format(Math.round(R.margem*1000)/10)+' sobram depois dos custos variáveis (insumos, embalagens, impostos, comissões e entrega).',
+      meta:'Subir a margem de '+pct(R.margem)+' para '+pct(R.margem+0.03)+' (+3 pontos percentuais).',
+      imp:'Cerca de '+brl0.format(fat*0.03)+' a mais de sobra por período com o mesmo faturamento.',
+      acoes:['Revise a precificação das fórmulas: custo de insumo, embalagem, tempo de manipulação e margem desejada. Confira se a tabela acompanha a variação dos fornecedores.',
+        'Peça ao menos três cotações dos insumos de maior giro e consolide as compras para negociar volume.',
+        'Controle validade e giro do estoque (primeiro que vence, primeiro que sai) para reduzir perdas de matéria-prima.',
+        'Crie uma alçada de desconto: até quanto o balcão pode dar sem aprovação, e registre cada desconto.',
+        'Analise quais linhas de fórmulas e produtos dão mais margem e dê visibilidade a elas, sem interferir na prescrição.'],
+      ind:'Margem de contribuição, mensal.'});
+  }
+  if(tk!=null){
+    A.push({k:'ticket',t:'Ticket médio por venda',s:1,
+      diag:'Cada pedido fechado rende em média '+brl.format(tk)+'.',
+      meta:'Subir o ticket médio em 8%, de '+brl.format(tk)+' para '+brl.format(tk*1.08)+'.',
+      imp:'Cerca de '+brl0.format(vd*tk*0.08)+' a mais de faturamento por período, com o mesmo número de pedidos.',
+      acoes:['Ofereça o tratamento para um período maior (60 ou 90 dias) com condição melhor, quando fizer sentido para o cliente.',
+        'Apresente produtos complementares coerentes com a prescrição (como fotoprotetor, higiene e suplementos prontos), sempre com orientação do farmacêutico.',
+        'Tenha duas apresentações para o mesmo tratamento (por exemplo, básica e premium em embalagem) e deixe o cliente escolher.',
+        'Defina uma entrega gratuita a partir de um valor mínimo de pedido.'],
+      ind:'Ticket médio por venda, semanal.'});
+  }
+  A.forEach(function(a,i){a.o=i});
+  A.sort(function(a,b){return b.s-a.s||a.o-b.o});
+  return A;
+}
+
+var SEV={3:['bad','Prioridade alta'],2:['warn','Prioridade média'],1:['info','Oportunidade'],0:['good','Em dia']};
+function chkLoad(){try{return JSON.parse(localStorage.getItem(CHK)||'{}')}catch(e){return {}}}
+function chkSave(o){try{localStorage.setItem(CHK,JSON.stringify(o))}catch(e){}}
+
+function renderPlan(){
+  var C=compute(),R=C.R,A=buildPlan(R),top=A.filter(function(a){return a.s>0}).slice(0,3),rest=A.filter(function(a){return top.indexOf(a)<0});
+  var per=(state.vals.periodo||'').trim(),nome=state.nome?String(state.nome):'';
+  var h='<div class="plan"><div class="plan-head"><span class="eyebrow" style="color:inherit;opacity:.75">Plano de ação</span><h2>'+(nome?esc(nome)+', este é o seu plano':'Seu plano de ação')+'</h2>'+
+    '<p>Montado com base nos números'+(per?' de <b>'+esc(per)+'</b>':'')+'. As prioridades mostram onde melhorar primeiro. As metas são para 90 dias e servem como ponto de partida: ajuste-as à realidade da sua farmácia.</p></div>';
+
+  /* status do registro */
+  if(state.reg==='salvo')h+='<div class="note"><p><b>Resposta registrada.</b> Seu primeiro nome e os indicadores calculados foram enviados. Se você enviar de novo, a resposta anterior é atualizada.</p></div>';
+  else if(state.reg==='exemplo')h+='<div class="note"><p><b>Resposta não registrada.</b> Você usou dados de exemplo, então nada foi enviado. Limpe o exemplo, coloque seus números e conclua de novo.</p></div>';
+  else if(state.reg==='codigo')h+='<div class="note"><p><b>Falta um passo para registrar sua resposta.</b> Neste acesso o envio direto não está disponível. Copie o código abaixo e mande para quem compartilhou este diagnóstico com você. O código tem só seu primeiro nome e os indicadores calculados.</p><textarea class="code" id="codeBox" readonly aria-label="Código da resposta">'+esc(state.code||'')+'</textarea><div class="actions"><button type="button" id="copyCode" class="primary">Copiar código</button></div><p class="foot" id="codeOk" hidden></p></div>';
+
+  if(!top.length)h+='<div class="pcard"><h3>Nenhum ponto crítico</h3><p>Os indicadores estão em boa situação. Use as oportunidades abaixo para crescer.</p></div>';
+  top.forEach(function(a,i){
+    var s=SEV[a.s];
+    h+='<article class="pcard"><header><div><div class="rank">Prioridade '+(i+1)+'</div><h3>'+a.t+'</h3></div><span class="pill s-'+s[0]+'">'+s[1]+'</span></header>'+
+      '<div class="facts"><div class="fact"><b>Onde você está</b>'+a.diag+'</div><div class="fact"><b>Meta para 90 dias</b>'+a.meta+'</div><div class="fact"><b>Impacto estimado</b>'+a.imp+'</div></div>'+
+      '<div class="sub">O que fazer</div><ul class="acoes">'+a.acoes.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>'+
+      '<p class="foot"><b>Como acompanhar:</b> '+a.ind+'</p></article>';
+  });
+
+  /* primeiro mês */
+  var chk=chkLoad(),items=[];
+  top.forEach(function(a){a.acoes.slice(0,2).forEach(function(x,j){items.push({id:a.k+j,t:x})})});
+  if(items.length){
+    h+='<div class="todo"><h3>Seus primeiros 30 dias</h3><p class="foot">Comece pelas duas primeiras ações de cada prioridade. Marque o que já fez.</p>'+
+      items.map(function(it){return '<label><input type="checkbox" data-chk="'+it.id+'"'+(chk[it.id]?' checked':'')+'><span>'+it.t+'</span></label>'}).join('')+'</div>';
+  }
+  if(rest.length){
+    h+='<div class="todo"><h3>Outros pontos</h3><ul class="ok" style="padding:0;margin:0">'+rest.map(function(a){var s=SEV[a.s];return '<li><b>'+a.t+'</b> <span class="pill s-'+s[0]+'" style="margin-left:6px">'+s[1]+'</span><br><span class="help">'+a.diag+' '+a.meta+'</span></li>'}).join('')+'</ul></div>';
+  }
+  h+='<p class="foot">As referências (por exemplo, LTV/CAC de 3x ou folga de 20%) são pontos de partida de trabalho e variam por farmácia e região. As ações são sugestões de gestão e não substituem a orientação do farmacêutico responsável, do contador ou da assessoria jurídica. Respeite sempre a prescrição e as normas da Anvisa e do CRF.</p>';
+  h+='<div class="actions"><button type="button" id="back">Voltar e ajustar os números</button><button type="button" id="copyPlan">Copiar plano de ação</button></div><p class="foot" id="planOk" hidden></p></div>';
+  $('view-plano').innerHTML=h;
+  window.__plan={top:top,nome:nome,per:per};
+  var cb=$('copyCode');if(cb)cb.onclick=function(){copyText(state.code,$('codeOk'),'Código copiado.')};
+  $('back').onclick=function(){showTab('diag')};
+  $('copyPlan').onclick=function(){
+    var t=['PLANO DE AÇÃO'+(per?' - '+per:''),''];
+    top.forEach(function(a,i){t.push((i+1)+'. '+a.t);t.push('   Onde está: '+a.diag);t.push('   Meta 90 dias: '+a.meta);t.push('   Impacto: '+a.imp);a.acoes.forEach(function(x){t.push('   - '+x)});t.push('')});
+    copyText(t.join('\n'),$('planOk'),'Plano copiado.');
+  };
+  $('view-plano').querySelectorAll('[data-chk]').forEach(function(el){el.onchange=function(){var o=chkLoad();o[el.dataset.chk]=el.checked;chkSave(o)}});
+}
+
+/* ---------- conclusão e registro ---------- */
+function indPayload(R){
+  var keys=['ticket','c1','c2','c3','cac','ltv','ltvl','ratio','margem','seg'],o={};
+  keys.forEach(function(k){o[k]=R[k]==null||!isFinite(R[k])?null:Math.round(R[k]*10000)/10000});return o;
+}
+function firstName(s){
+  var w=String(s||'').trim().split(/\s+/)[0]||'';
+  return /^[\p{L}][\p{L}'’-]{1,29}$/u.test(w)?w:'';
+}
+function mkCode(p){return 'DIAG1-'+btoa(unescape(encodeURIComponent(JSON.stringify(p))))}
+function parseCode(s){
+  s=String(s||'').trim();if(s.indexOf('DIAG1-')!==0)return null;
+  try{
+    var p=JSON.parse(decodeURIComponent(escape(atob(s.slice(6)))));
+    if(!p||p.v!==1||typeof p.n!=='string'||!firstName(p.n)||p.n.length>30||typeof p.em!=='string'||isNaN(Date.parse(p.em))||!p.i||typeof p.i!=='object')return null;
+    var ind={};Object.keys(p.i).slice(0,20).forEach(function(k){var v=p.i[k];if(v===null||(typeof v==='number'&&isFinite(v)))ind[k]=v});
+    return {nome:p.n,em:p.em,ind:ind};
+  }catch(e){return null}
+}
+function hashId(s){var h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return 'i'+(h>>>0).toString(36)+s.length.toString(36)}
+
+$('concluir').onclick=async function(){
+  var err=$('finErr');err.hidden=true;
+  var missing=IDS.filter(function(id){return (state.vals[id]||'').toString().trim()===''}).map(lab);
+  var fn=firstName(state.nome),msgs=[];
+  if(missing.length)msgs.push('Faltam '+missing.length+' número(s): '+missing.slice(0,3).join('; ')+(missing.length>3?'; ...':'')+'.');
+  if(!fn)msgs.push('Digite seu primeiro nome, só letras.');
+  if(!state.aceite)msgs.push('Marque o aceite para registrar sua resposta.');
+  if(msgs.length){err.textContent=msgs.join(' ');err.hidden=false;return}
+  state.nome=fn;$('f-nome').value=fn;
+  var C=compute(),payload={v:1,n:fn,em:new Date().toISOString(),i:indPayload(C.R)};
+  state.code=mkCode(payload);state.done=true;
+  if(state.example){state.reg='exemplo'}
+  else{
+    state.reg='codigo';
+    try{
+      var uid=usr?await usr.id():null;
+      if(db&&uid){await db.doc('respostas/'+uid).set({nome:fn,em:payload.em,ind:payload.i,origem:'direto'});state.reg='salvo'}
+    }catch(e){state.reg='codigo'}
+  }
+  save();update();renderPlan();showTab('plano');
+};
+
+/* ---------- abas ---------- */
+function showTab(t){
+  ['diag','plano','painel'].forEach(function(k){$('view-'+k).hidden=(k!==t);$('tab-'+k).setAttribute('aria-selected',String(k===t))});
+  $('jump').hidden=(t!=='diag');
+  if(t==='plano')renderPlan();
+  window.scrollTo({top:0});
+}
+$('tab-diag').onclick=function(){showTab('diag')};
+$('tab-plano').onclick=function(){if(state.done)showTab('plano')};
+$('tab-painel').onclick=function(){showTab('painel')};
+
+/* ---------- painel do responsável ---------- */
+function median(a){a=a.filter(function(x){return x!=null}).sort(function(x,y){return x-y});if(!a.length)return null;var m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2}
+function dstr(iso){var d=new Date(iso);return isNaN(d)?'':d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'})}
+var delArm=null;
+function painelShell(){
+  $('view-painel').innerHTML='<div class="panel"><div id="pk"><p class="foot">Carregando respostas...</p></div>'+
+   '<div class="card"><h3>Adicionar respostas recebidas por código</h3><p class="help">Quem não consegue enviar direto copia um código no fim do diagnóstico. Cole um código por linha para contar a resposta aqui. Repetições são ignoradas.</p><textarea class="code" id="imp" aria-label="Códigos recebidos" placeholder="DIAG1-..."></textarea><div class="actions"><button type="button" class="primary" id="impBtn">Importar</button></div><p class="foot" id="impMsg" hidden></p></div></div>';
+  $('impBtn').onclick=async function(){
+    var lines=$('imp').value.split(/\s+/).filter(Boolean),ok=0,bad=0,msg=$('impMsg');
+    for(var i=0;i<lines.length;i++){
+      var p=parseCode(lines[i]);if(!p){bad++;continue}
+      try{await db.collection('respostas').doc(hashId(lines[i])).set({nome:p.nome,em:p.em,ind:p.ind,origem:'importado'});ok++}catch(e){bad++}
+    }
+    msg.textContent=ok+' importada(s)'+(bad?', '+bad+' inválida(s) ou com erro':'')+'.';msg.hidden=false;if(!bad)$('imp').value='';
+  };
+}
+function renderPainel(snap){
+  var rows=snap.docs.map(function(d){var x=d.data();return {id:d.id,nome:x.nome||'',em:x.em||'',ind:x.ind||{},origem:x.origem||'direto'}});
+  var now=Date.now(),day=864e5,n7=rows.filter(function(r){return now-Date.parse(r.em)<7*day}).length,n1=rows.filter(function(r){return now-Date.parse(r.em)<day}).length;
+  var h='<div class="kpis"><div class="kpi"><b>'+rows.length+'</b><span>pessoas que preencheram</span></div><div class="kpi"><b>'+n1+'</b><span>nas últimas 24 horas</span></div><div class="kpi"><b>'+n7+'</b><span>nos últimos 7 dias</span></div><div class="kpi"><b>'+rows.filter(function(r){return r.origem==='importado'}).length+'</b><span>importadas por código</span></div></div>';
+  if(!rows.length){h+='<div class="card"><h3>Ainda sem respostas</h3><p class="help">Compartilhe o link deste diagnóstico. Cada pessoa que concluir aparece aqui com o primeiro nome e os indicadores calculados.</p></div>'}
+  else{
+    var days=[],i;for(i=13;i>=0;i--){var dt=new Date(now-i*day);days.push({k:dt.toDateString(),l:('0'+dt.getDate()).slice(-2)+'/'+('0'+(dt.getMonth()+1)).slice(-2),n:0})}
+    rows.forEach(function(r){var k=new Date(r.em).toDateString();days.forEach(function(d){if(d.k===k)d.n++})});
+    var mx=Math.max.apply(null,days.map(function(d){return d.n}))||1;
+    h+='<div class="card"><h3>Respostas por dia (últimos 14 dias)</h3><div class="days">'+days.map(function(d){return '<div><b>'+(d.n||'')+'</b><i style="height:'+Math.round(d.n/mx*70)+'px"></i><span>'+d.l+'</span></div>'}).join('')+'</div></div>';
+    var col=function(k){return rows.map(function(r){return r.ind[k]==null?null:r.ind[k]})};
+    var rt=col('ratio'),sa=rt.filter(function(v){return v!=null&&v>=3}).length,at=rt.filter(function(v){return v!=null&&v>=1&&v<3}).length,cr=rt.filter(function(v){return v!=null&&v<1}).length;
+    h+='<div class="two"><div class="card"><h3>Mediana dos indicadores</h3><div class="stat">'+
+      [['Ticket médio por venda',median(col('ticket')),'brl'],['Atendimento → orçamento',median(col('c1')),'pct'],['Orçamento → venda',median(col('c2')),'pct'],['CAC',median(col('cac')),'brl'],['LTV / CAC',median(col('ratio')),'x'],['Margem de contribuição',median(col('margem')),'pct'],['Folga sobre o equilíbrio',median(col('seg')),'pct']].map(function(s){
+        var v=s[1];return '<span>'+s[0]+'</span><b>'+(v==null?'—':s[2]==='brl'?brl.format(v):s[2]==='pct'?pct(v):nf1.format(Math.round(v*10)/10)+'x')+'</b>'}).join('')+'</div></div>'+
+      '<div class="card"><h3>Saúde da captação (LTV/CAC)</h3><div class="stat"><span><span class="pill s-good">Saudável</span> 3x ou mais</span><b>'+sa+'</b><span><span class="pill s-warn">Atenção</span> entre 1x e 3x</span><b>'+at+'</b><span><span class="pill s-bad">Crítico</span> abaixo de 1x</span><b>'+cr+'</b></div></div></div>';
+    var fm=function(v,t){return v==null?'—':t==='pct'?pct(v):nf1.format(Math.round(v*10)/10)+'x'};
+    h+='<div class="card"><h3>Respostas</h3><div class="tbl"><table><thead><tr><th>Primeiro nome</th><th>Data</th><th>LTV/CAC</th><th>Margem</th><th>Folga</th><th>Orç. → venda</th><th>Origem</th><th></th></tr></thead><tbody>'+
+      rows.map(function(r){return '<tr><td>'+esc(r.nome)+'</td><td>'+dstr(r.em)+'</td><td>'+fm(r.ind.ratio,'x')+'</td><td>'+fm(r.ind.margem,'pct')+'</td><td>'+fm(r.ind.seg,'pct')+'</td><td>'+fm(r.ind.c2,'pct')+'</td><td>'+(r.origem==='importado'?'Código':'Direto')+'</td><td><button type="button" data-del="'+esc(r.id)+'">Excluir</button></td></tr>'}).join('')+'</tbody></table></div></div>';
+  }
+  $('pk').innerHTML=h;
+  $('pk').querySelectorAll('[data-del]').forEach(function(b){b.onclick=async function(){
+    if(delArm!==b.dataset.del){delArm=b.dataset.del;b.textContent='Confirmar exclusão';setTimeout(function(){if(delArm===b.dataset.del){delArm=null;b.textContent='Excluir'}},4000);return}
+    delArm=null;try{await db.doc('respostas/'+b.dataset.del).delete()}catch(e){b.textContent='Não foi possível'}
+  }});
+}
+function initPainel(){
+  painelShell();
+  var t=setTimeout(function(){var el=$('pk');if(el&&el.textContent.indexOf('Carregando')>=0)el.innerHTML='<p class="foot">Não foi possível alcançar os dados agora. Eles aparecem aqui assim que a conexão voltar.</p>'},10000);
+  unsubPainel=db.collection('respostas').orderBy('em','desc').limit(1000).onSnapshot(function(s){clearTimeout(t);renderPainel(s)},function(e){clearTimeout(t);$('pk').innerHTML='<p class="err">Não foi possível ler as respostas ('+esc(e&&e.code||'erro')+').</p>'});
+}
+
+/* ---------- início ---------- */
+if(!restore())loadExample();
+syncInputs();update();
+if(state.done)$('tab-plano').disabled=false;
+(async function(){
+  try{usr=await claude.use('user')}catch(e){usr=null}
+  try{db=await claude.use('db')}catch(e){db=null}
+  try{isAdmin=usr?await usr.canEdit():false}catch(e){isAdmin=false}
+  if(db&&isAdmin){$('tab-painel').hidden=false;initPainel()}
+})();
+})();
+</script>
+
+</body>
+</html>
