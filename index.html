@@ -190,7 +190,7 @@ td button{padding:4px 9px;font-size:12.5px}
           <p><b>Você está vendo dados de exemplo de uma farmácia fictícia.</b> Troque pelos seus números ou limpe tudo para começar do zero.</p>
           <button type="button" id="clearEx" class="primary">Limpar e usar meus dados</button>
         </div>
-        <div class="progress"><span><b id="pcount">0</b> de 12 números</span><div class="bar"><i id="pbar"></i></div></div>
+        <div class="progress"><span><b id="pcount">0</b> de <span id="ptotal">14</span> números</span><div class="bar"><i id="pbar"></i></div></div>
         <div id="fields"></div>
 
         <div class="finish">
@@ -238,20 +238,23 @@ var GROUPS=[
  {t:'Atendimento e orçamentos',d:'Mostra por onde o cliente avança até comprar.',items:[
   {id:'visitantes',type:'int',suf:'atendimentos',label:'Atendimentos ou entradas',help:'Pessoas que entraram na farmácia, chamaram no WhatsApp ou ligaram para consultar. Se não há contagem exata, estime pelo movimento do balcão.',ph:'0',ex:4200},
   {id:'orcamentos',type:'int',suf:'orçamentos',label:'Orçamentos de receitas realizados',help:'Quantas receitas foram orçadas, tenham sido aprovadas ou não.',ph:'0',ex:2300}]},
- {t:'Conquista de novos clientes',d:'Quanto você gastou para trazer gente que nunca tinha comprado.',items:[
+ {t:'Conquista de novos clientes',d:'Quanto você gastou para trazer gente que nunca tinha comprado. Em marketing e comercial, informe em reais o gasto <b>fixo</b> (o mesmo valor todo período): ele será somado aos seus custos fixos. Informe em porcentagem do faturamento o gasto <b>variável</b> (que cresce com as vendas, como uma comissão de 3%): ele será somado aos seus custos variáveis. Se não tiver um dos tipos, <b>digite 0</b> no campo.',items:[
   {id:'novos',type:'int',suf:'novos',label:'Novos clientes no período',help:'Pessoas que compraram pela primeira vez na sua farmácia.',ph:'0',ex:120},
-  {id:'mkt',type:'brl',pre:'R$',label:'Investimento em marketing',help:'Anúncios, redes sociais, materiais impressos, brindes, eventos e ações de relacionamento.',ph:'0,00',ex:14000},
-  {id:'vendasNovos',type:'brl',pre:'R$',label:'Investimento comercial para novos clientes',help:'Visitas a consultórios, comissões por indicação e o tempo da equipe dedicado a captar clientes novos.',ph:'0,00',ex:9000}]},
+  {id:'mktFix',type:'brl',pre:'R$',label:'Marketing: gasto fixo no período',help:'Anúncios com verba definida, agência, materiais impressos, brindes, eventos e ações de relacionamento. Vai para os custos fixos. Se não houver, digite 0.',ph:'0,00',ex:10000},
+  {id:'mktVar',type:'dec',suf:'% do faturamento',label:'Marketing: gasto variável',help:'Quando o gasto cresce com as vendas, por exemplo 1% do faturamento em brindes ou anúncios. Vai para os custos variáveis. Se não houver, digite 0.',ph:'0',ex:1},
+  {id:'comFix',type:'brl',pre:'R$',label:'Comercial para novos clientes: gasto fixo no período',help:'Salário de quem capta clientes, visitas a consultórios e o tempo da equipe dedicado a captar clientes novos. Vai para os custos fixos. Se não houver, digite 0.',ph:'0,00',ex:4000},
+  {id:'comVar',type:'dec',suf:'% do faturamento',label:'Comercial para novos clientes: gasto variável',help:'Comissões por indicação ou por cliente captado, calculadas sobre o faturamento, por exemplo 2%. Vai para os custos variáveis. Se não houver, digite 0.',ph:'0',ex:2}]},
+
  {t:'Custos',d:'O que você paga para a farmácia funcionar.',items:[
-  {id:'cf',type:'brl',pre:'R$',label:'Custos fixos totais',help:'Pagos todo mês mesmo sem vender: aluguel, salários, farmacêutico responsável, laboratório e controle de qualidade, licenças, software, contador.',ph:'0,00',ex:56000},
-  {id:'cv',type:'brl',pre:'R$',label:'Custos variáveis totais',help:'Mudam conforme você vende: insumos e matérias-primas, embalagens, impostos sobre a venda, comissões, taxas de cartão, frete e entrega.',ph:'0,00',ex:112000}]},
+  {id:'cf',type:'brl',pre:'R$',label:'Custos fixos totais',help:'Pagos todo mês mesmo sem vender: aluguel, salários, farmacêutico responsável, laboratório e controle de qualidade, licenças, software, contador. Não repita aqui o marketing e o comercial de captação, que já foram informados acima.',ph:'0,00',ex:40000},
+  {id:'cv',type:'brl',pre:'R$',label:'Custos variáveis totais',help:'Mudam conforme você vende: insumos e matérias-primas, embalagens, impostos sobre a venda, comissões, taxas de cartão, frete e entrega. Não repita aqui o marketing e o comercial de captação, que já foram informados acima.',ph:'0,00',ex:95000}]},
  {t:'Relacionamento com o cliente',d:'Estimativas de quanto um cliente fica com você.',items:[
   {id:'freq',type:'dec',suf:'compras por ano',label:'Compras médias por cliente por ano',help:'Em média, quantas vezes um cliente volta a comprar em 12 meses. A renovação de um tratamento conta como nova compra.',ph:'0',ex:2.8},
   {id:'tempo',type:'dec',suf:'meses',label:'Tempo médio de relacionamento',help:'Por quantos meses, em média, um cliente continua comprando com você. Por exemplo, 24 para dois anos.',ph:'0',ex:22}]}
 ];
 var IDS=[],META={};
 GROUPS.forEach(function(g){g.items.forEach(function(i){META[i.id]=i;if(i.id!=='periodo')IDS.push(i.id)})});
-var KEY='diag-farmacia-v2',CHK='diag-farmacia-chk-v2';
+var KEY='diag-farmacia-v3',CHK='diag-farmacia-chk-v3';
 var state={vals:{},example:true,nome:'',aceite:false,done:false,reg:null,code:''};
 var db=null,usr=null,isAdmin=false,unsubPainel=null;
 /* Envio silencioso opcional (Google Forms). Deixe url vazio para desligar. */
@@ -307,12 +310,18 @@ var CHECKS=[
  ['vendas',function(){var a=num('vendas'),b=num('orcamentos');return a!=null&&b!=null&&b>0&&a>b?'Há mais vendas do que orçamentos. A taxa passará de 100%. Tudo bem se parte das vendas fecha sem orçamento.':''}],
  ['clientes',function(){var a=num('clientes'),b=num('vendas');return a!=null&&b!=null&&a>b?'Clientes únicos não podem superar o número de vendas. Cada cliente compra ao menos uma vez.':''}],
  ['novos',function(){var a=num('novos'),b=num('clientes');return a!=null&&b!=null&&a>b?'Novos clientes não podem superar os clientes atendidos.':''}],
- ['cv',function(){var a=num('cv'),b=num('fat');return a!=null&&b!=null&&a>b?'Os custos variáveis são maiores que o faturamento. Confira os valores.':''}]
+ ['cv',function(){var a=num('cv'),b=num('fat');return a!=null&&b!=null&&a>b?'Os custos variáveis são maiores que o faturamento. Confira os valores.':''}],
+ ['mktVar',function(){var a=num('mktVar');return a!=null&&(a<0||a>100)?'Informe uma porcentagem entre 0 e 100.':''}],
+ ['comVar',function(){var a=num('comVar');return a!=null&&(a<0||a>100)?'Informe uma porcentagem entre 0 e 100.':''}]
 ];
 function warnings(){CHECKS.forEach(function(c){var el=$('w-'+c[0]),m=c[1]();el.textContent=m;el.hidden=!m})}
 
 /* ---------- indicadores ---------- */
 function lab(id){return META[id].label}
+function varPct(){return (num('mktVar')+num('comVar'))/100}
+function cacSpend(){return num('mktFix')+num('comFix')+varPct()*num('fat')}
+function cfTot(){return num('cf')+num('mktFix')+num('comFix')}
+function cvTot(){return num('cv')+varPct()*num('fat')}
 var IND=[
  {g:'Vendas e clientes',id:'ticket',name:'Ticket médio por venda',fmt:'brl',how:'Faturamento ÷ número de vendas',nums:['fat'],dens:['vendas'],f:function(){return num('fat')/num('vendas')},
   read:function(v){return 'Cada pedido fechado rende em média '+brl.format(v)+'.'}},
@@ -324,7 +333,7 @@ var IND=[
   read:function(v){return 'De cada 100 orçamentos, '+nf1.format(Math.round(v*1000)/10)+' são aprovados.'}},
  {g:'Do atendimento à venda',id:'c3',name:'Atendimentos que viram venda',fmt:'pct',how:'Vendas ÷ atendimentos',nums:['vendas'],dens:['visitantes'],f:function(){return num('vendas')/num('visitantes')},
   read:function(v){return 'De cada 100 atendimentos, '+nf1.format(Math.round(v*1000)/10)+' terminam em venda.'}},
- {g:'Custo e valor de um cliente',id:'cac',name:'CAC: custo para conquistar um cliente',fmt:'brl',how:'(Marketing + comercial para novos clientes) ÷ novos clientes',nums:['mkt','vendasNovos'],dens:['novos'],f:function(){return (num('mkt')+num('vendasNovos'))/num('novos')},
+ {g:'Custo e valor de um cliente',id:'cac',name:'CAC: custo para conquistar um cliente',fmt:'brl',how:'(Marketing + comercial para novos clientes, fixo em R$ mais a parte variável sobre o faturamento) ÷ novos clientes',nums:['mktFix','mktVar','comFix','comVar','fat'],dens:['novos'],f:function(){return cacSpend()/num('novos')},
   read:function(v){return 'Trazer cada cliente novo custou '+brl.format(v)+'.'}},
  {g:'Custo e valor de um cliente',id:'ltv',name:'LTV: receita de um cliente',fmt:'brl',how:'Ticket médio × compras por ano × (meses de relacionamento ÷ 12)',nums:['fat','freq','tempo'],dens:['vendas'],f:function(){return num('fat')/num('vendas')*num('freq')*num('tempo')/12},
   read:function(v){return 'Ao longo do relacionamento, um cliente gera cerca de '+brl.format(v)+' de faturamento.'}},
@@ -333,9 +342,9 @@ var IND=[
  {g:'Custo e valor de um cliente',id:'ratio',name:'Relação LTV / CAC',fmt:'x',how:'LTV em lucro ÷ CAC',needs:['ltvl','cac'],block:function(r){return r.cac>0?'':'Informe um investimento maior que zero em marketing ou comercial.'},f:function(r){return r.ltvl/r.cac},
   status:function(v){return v>=3?['good','Saudável']:v>=1?['warn','Atenção']:['bad','Crítico']},
   read:function(v){var x=nf1.format(Math.round(v*10)/10);return v>=3?'Cada R$ 1 investido para trazer um cliente volta como R$ '+x+' em lucro. O modelo se sustenta.':v>=1?'Cada R$ 1 investido volta como R$ '+x+' em lucro. Cobre o custo, mas o ideal é 3 ou mais.':'Cada R$ 1 investido volta como apenas R$ '+x+'. Trazer clientes está custando mais do que eles devolvem.'}},
- {g:'Rentabilidade',id:'margem',name:'Margem de contribuição',fmt:'pct',how:'(Faturamento − custos variáveis) ÷ faturamento',nums:['fat','cv'],dens:['fat'],f:function(){return (num('fat')-num('cv'))/num('fat')},
+ {g:'Rentabilidade',id:'margem',name:'Margem de contribuição',fmt:'pct',how:'(Faturamento − custos variáveis, incluindo a parte variável de marketing e comercial) ÷ faturamento',nums:['fat','cv','mktVar','comVar'],dens:['fat'],f:function(){return (num('fat')-cvTot())/num('fat')},
   read:function(v){return v>0?'De cada R$ 100 vendidos, R$ '+nf1.format(Math.round(v*1000)/10)+' sobram para pagar os custos fixos e gerar lucro.':'Os custos variáveis consomem todo o faturamento. Não sobra nada para os custos fixos.'}},
- {g:'Rentabilidade',id:'pe',name:'Ponto de equilíbrio',fmt:'brl',how:'Custos fixos ÷ margem de contribuição',needs:['margem'],nums:['cf'],block:function(r){return r.margem>0?'':'A margem de contribuição precisa ser positiva para calcular.'},f:function(r){return num('cf')/r.margem},
+ {g:'Rentabilidade',id:'pe',name:'Ponto de equilíbrio',fmt:'brl',how:'Custos fixos (incluindo marketing e comercial fixos) ÷ margem de contribuição',needs:['margem'],nums:['cf','mktFix','comFix'],block:function(r){return r.margem>0?'':'A margem de contribuição precisa ser positiva para calcular.'},f:function(r){return cfTot()/r.margem},
   read:function(v){return 'Você precisa faturar '+brl.format(v)+' no período para cobrir os custos fixos e não ter prejuízo.'}},
  {g:'Rentabilidade',id:'seg',name:'Folga sobre o equilíbrio',fmt:'pct',how:'(Faturamento − ponto de equilíbrio) ÷ faturamento',needs:['pe'],nums:['fat'],dens:['fat'],f:function(r){return (num('fat')-r.pe)/num('fat')},
   status:function(v){return v>=0.2?['good','Confortável']:v>=0?['warn','Apertado']:['bad','Abaixo']},
@@ -408,7 +417,7 @@ function render(){
 }
 function update(){
   var filled=IDS.filter(function(id){return (state.vals[id]||'').toString().trim()!==''}).length;
-  $('pcount').textContent=filled;
+  $('pcount').textContent=filled;$('ptotal').textContent=IDS.length;
   $('pbar').style.width=(filled/IDS.length*100)+'%';
   $('banner').hidden=!state.example;
   warnings();render();save();
@@ -441,7 +450,7 @@ function buildPlan(R){
     A.push({k:'aquisicao',t:'Custo para conquistar clientes novos',s:s,
       diag:'Cada cliente novo custa '+brl.format(R.cac)+' e devolve '+brl.format(R.ltvl)+' em lucro ('+nf1.format(Math.round(R.ratio*10)/10)+'x). '+(s?'O ideal é 3x ou mais.':'Está acima de 3x.'),
       meta:s?'Reduzir o CAC em 15%, de '+brl.format(R.cac)+' para '+brl.format(cacAlvo)+', e caminhar para LTV/CAC de 3x.':'Manter o LTV/CAC acima de 3x enquanto aumenta o número de clientes novos.',
-      imp:s?'Economia de cerca de '+brl0.format(0.15*(num('mkt')+num('vendasNovos')))+' por período trazendo o mesmo número de clientes novos.':'Com a relação acima de 3x, há espaço para investir um pouco mais em captação e crescer.',
+      imp:s?'Economia de cerca de '+brl0.format(0.15*cacSpend())+' por período trazendo o mesmo número de clientes novos.':'Com a relação acima de 3x, há espaço para investir um pouco mais em captação e crescer.',
       acoes:['Pergunte em todo cadastro novo como a pessoa conheceu a farmácia (indicação de prescritor, indicação de cliente, Google, Instagram, passou na frente) e some os resultados todo mês.',
         'Faça uma curva dos prescritores que mais enviam receitas e concentre as visitas e o material nos 20% que mais trazem pedidos.',
         'Crie um programa de indicação: o cliente que indica um amigo ganha um benefício na próxima compra, sem pagar mídia.',
@@ -472,7 +481,7 @@ function buildPlan(R){
       imp:s3?'Cerca de '+nf0.format(Math.round(extra))+' vendas a mais e '+brl0.format(extra*tk)+' de faturamento por período, sem gastar mais para atrair gente.':'Cada ponto percentual a mais vale cerca de '+brl0.format(orc*0.01*tk)+' de faturamento por período.',
       acoes:['Entregue o orçamento no mesmo atendimento, com valor, prazo de entrega e forma de pagamento claros. Orçamento que "fica de ficar pronto" costuma esfriar.',
         'Faça retorno em até 24 horas para todo orçamento não aprovado, por WhatsApp, perguntando se ficou alguma dúvida.',
-        'Use a técnica SPIN nas conversas (roteiro no bloco "Vender mais", mais abaixo): primeiro perguntas, depois o preço.',
+        'No balcão e por telefone, use o SPIN Selling. No WhatsApp, use o roteiro de venda online ágil. Os dois estão no bloco "Vender mais", mais abaixo.',
         'Mostre o valor por dia de tratamento e ofereça parcelamento ou Pix, em vez de apresentar só o total.',
         'Anote o motivo de cada orçamento perdido (preço, prazo, dúvida, foi para outra farmácia) e revise a lista toda semana.',
         'Treine o balcão para explicar o que diferencia a farmácia: matéria-prima de fornecedor qualificado, controle de qualidade e acompanhamento do farmacêutico. Nunca sugira alterar a prescrição.'],
@@ -536,7 +545,7 @@ function buildPlan(R){
 function buildPlaybooks(R){
   var tk=R.ticket,freq=num('freq'),tempo=num('tempo'),P=[];
   var lowTk=tk!=null&&tk<150,lowConv=(R.c2!=null&&R.c2<0.6)||(R.c3!=null&&R.c3<0.3),lowRec=freq!=null&&freq<4,lowRel=(tempo!=null&&tempo<24)||lowRec;
-  P.push({k:'spin',rec:lowConv,t:'Técnica SPIN para converter mais orçamentos',
+  P.push({k:'spin',rec:lowConv,t:'SPIN Selling (balcão e ligação): técnica de perguntas para converter mais orçamentos',def:'SPIN Selling é uma técnica de venda por perguntas. As letras são Situação, Problema, Implicação e Necessidade. Em vez de falar o preço logo de início, você pergunta e deixa o cliente perceber o valor do tratamento. Funciona melhor no balcão e por telefone, onde há tempo para conversar. Para o WhatsApp, veja o roteiro de venda online ágil.',
     why:(R.c2!=null?'De cada 100 orçamentos, '+nf1.format(Math.round(R.c2*1000)/10)+' viram venda. ':'')+'O SPIN faz o cliente perceber o valor do tratamento antes de ouvir o preço.',
     blocks:[{t:'Roteiro de perguntas',l:[
       'Situação: entenda o contexto com 2 ou 3 perguntas curtas. Exemplos: "Há quanto tempo você convive com isso?" e "O que você já usou até agora?".',
@@ -546,7 +555,24 @@ function buildPlaybooks(R){
       'Só depois apresente o orçamento, ligando cada item ao que o cliente disse, e feche com: "Faz sentido para você começar assim?".',
       'Treine a equipe em duplas, 15 minutos por semana, e anote as perguntas que mais funcionam.']}],
     med:'Taxa de orçamentos aprovados por atendente, antes e depois do treino (mínimo de 4 semanas).'});
-  P.push({k:'cross',rec:lowTk,t:'Cross-sell para aumentar o ticket',
+  P.push({k:'online',rec:lowConv,t:'Venda online ágil (WhatsApp): roteiro curto para quem quer rapidez',def:'É um roteiro curto de atendimento por mensagem para quem busca agilidade: responder em minutos, perguntar só o necessário, mandar o orçamento completo de uma vez e fechar com um próximo passo simples.',
+    why:(R.c1!=null?'De cada 100 atendimentos, '+nf1.format(Math.round(R.c1*1000)/10)+' viram orçamento. ':'')+'Quem chama no WhatsApp costuma comparar rápido e seguir com quem responde primeiro. Um roteiro enxuto evita perder o cliente na espera.',
+    blocks:[{t:'Roteiro em 5 passos',l:[
+      'Responda em minutos, no horário de funcionamento. Se não der para responder na hora, deixe uma mensagem automática dizendo quando você retorna.',
+      'Peça o que destrava o orçamento, em uma mensagem só: a foto da receita. Faça no máximo uma pergunta de apoio, por exemplo sobre o prazo do tratamento (30, 60 ou 90 dias).',
+      'Envie o orçamento completo em uma única mensagem: valor, valor por dia de tratamento, prazo de entrega e formas de pagamento (Pix ou parcelado).',
+      'Feche com um próximo passo fácil: "Posso confirmar e te enviar o Pix?".',
+      'Se não houver resposta, retorne em até 24 horas com uma mensagem curta: "Ficou alguma dúvida sobre o orçamento?".']},
+      {t:'Mensagens prontas (adapte ao seu jeito)',l:[
+      'Abertura: "Oi, aqui é a [nome], da [farmácia]. Pode me mandar a foto da receita? Já te passo o orçamento."',
+      'Orçamento: "Seu tratamento de 60 dias fica R$ [valor] (cerca de R$ [valor/dia] por dia). Entrega em [prazo]. Pagamento por Pix ou em até [x] vezes. Posso confirmar?"',
+      'Retorno: "Oi, [nome]! Ficou alguma dúvida sobre o seu orçamento? Fico à disposição."']},
+      {t:'Cuidados',l:[
+      'Dúvida de saúde, dose ou uso vai para o farmacêutico responsável. Ninguém sugere alterar a prescrição.',
+      'Peça apenas os dados necessários ao pedido e fale com quem autorizou receber mensagens (LGPD).',
+      'Se o cliente fizer perguntas, use uma ou duas do SPIN, como "O que você já usou até agora?", sem alongar a conversa.']}],
+    med:'Tempo até a primeira resposta, orçamentos enviados em até 1 hora e taxa de aprovação dos orçamentos feitos por WhatsApp.'});
+  P.push({k:'cross',rec:lowTk,t:'Cross-sell (venda cruzada) para aumentar o ticket',def:'Cross-sell, ou venda cruzada, é sugerir um item complementar ao que o cliente já vai comprar. Exemplo: quem leva uma fórmula para a pele recebe a sugestão de um fotoprotetor. Ticket médio é quanto cada pedido rende, em média.',
     why:(tk!=null?'Seu ticket médio é '+brl.format(tk)+'. ':'')+'Oferecer um item complementar relevante aumenta o valor do pedido sem precisar de mais clientes.',
     blocks:[{t:'Como fazer',l:[
       'Defina, para cada fórmula ou tratamento mais vendido, 1 ou 2 complementos coerentes (por exemplo, fotoprotetor, higiene e hidratação, suplemento pronto de venda livre).',
@@ -555,7 +581,7 @@ function buildPlaybooks(R){
       'Dê ao balcão um cartão com os complementos de cada linha e uma meta simples: 3 em cada 10 pedidos com pelo menos um item a mais.',
       'Respeite sempre a prescrição: não substitua nem altere itens prescritos e deixe o farmacêutico validar as sugestões de saúde.']}],
     med:'Ticket médio e percentual de pedidos com 2 ou mais itens, por semana.'});
-  P.push({k:'estetica',rec:false,t:'Upsell para quem busca estética sem receita',
+  P.push({k:'estetica',rec:false,t:'Upsell (oferta de uma versão melhor) para quem busca estética sem receita',def:'Upsell é oferecer ao cliente uma versão melhor ou maior do que ele ia levar, como um tratamento mais longo, uma linha superior ou um refil. Não é empurrar produto: é mostrar uma opção que faça sentido para o objetivo dele.',
     why:'Quem chega querendo cuidar da pele ou da aparência sem receita costuma comprar um item só. Uma rotina completa melhora a experiência e o valor do pedido.',
     blocks:[{t:'Como fazer',l:[
       'Comece pelo objetivo do cliente, com as perguntas do SPIN, e ofereça apenas produtos de venda livre e cosméticos permitidos, sem indicar medicamentos que exigem prescrição.',
@@ -565,7 +591,7 @@ function buildPlaybooks(R){
       'Para queixas que pedem avaliação médica ou prescrição, encaminhe a um dermatologista parceiro e volte a atender o cliente com a receita.',
       'Confira as regras da Anvisa e do CRF antes de divulgar resultados, fotos de antes e depois ou promoções.']}],
     med:'Ticket médio desse público e quantos voltam em até 45 dias.'});
-  P.push({k:'recompra',rec:lowRec,t:'Estratégia de recompra',
+  P.push({k:'recompra',rec:lowRec,t:'Estratégia de recompra',def:'Recompra é o cliente voltar a comprar. Nos tratamentos contínuos, é a renovação.',
     why:(freq!=null?'Cada cliente compra '+nf1.format(freq)+' vezes por ano. ':'')+'Aumentar a recorrência é a forma mais barata de crescer, porque o cliente já conhece a farmácia.',
     blocks:[{t:'Como fazer',l:[
       'No cadastro, registre o tratamento, a data da entrega e a duração prevista, para saber quando ele termina.',
@@ -575,7 +601,7 @@ function buildPlaybooks(R){
       'Crie um clube simples, com pontos ou desconto progressivo para quem renova em dia, sem comprometer a margem.',
       'Meta inicial: mais 0,5 compra por cliente por ano em 90 dias.']}],
     med:'Taxa de renovação (quantos renovam entre os que terminaram o tratamento) e compras por cliente por ano.'});
-  P.push({k:'reativa',rec:lowRel,t:'Reativação de clientes inativos',
+  P.push({k:'reativa',rec:lowRel,t:'Reativação de clientes inativos',def:'Reativar é reconquistar quem já foi cliente e parou de comprar. Esse cliente é chamado de inativo.',
     why:(R.cac!=null?'Trazer um cliente novo custa '+brl.format(R.cac)+'. Reativar um cliente antigo costuma custar bem menos. ':'Reativar um cliente antigo costuma custar menos que conquistar um novo. ')+(tk!=null&&freq!=null?'Cada cliente que volta rende cerca de '+brl0.format(tk*freq)+' por ano.':''),
     blocks:[{t:'Como fazer',l:[
       'Liste quem não compra há 90 dias e quem não compra há 180 dias, separando pelo último tratamento.',
@@ -585,7 +611,7 @@ function buildPlaybooks(R){
       'Contate só quem autorizou receber mensagens e inclua sempre a opção de sair da lista (LGPD).',
       'Meta inicial: reativar 10% da lista em 60 dias, como ponto de partida para ajustar.']}],
     med:'Taxa de reativação (quantos compraram de novo) e receita recuperada por campanha.'});
-  P.push({k:'robo',rec:false,tag:'Teste sugerido',t:'Atendimento com robô: cuidados e teste',
+  P.push({k:'robo',rec:false,tag:'Teste sugerido',t:'Atendimento com robô (assistente virtual): cuidados e teste',def:'Robô de atendimento, ou chatbot, é um programa que responde mensagens automaticamente, por exemplo no WhatsApp. O teste A/B compara dois jeitos de atender durante um tempo e mostra qual converte mais.',
     why:'Um robô pode responder mais rápido, mas só compensa se aumentar as vendas sem piorar a experiência. Teste antes de adotar.',
     blocks:[{t:'Cuidados com o robô',l:[
       'Apresente-se como assistente virtual na primeira mensagem e ofereça falar com uma pessoa a qualquer momento.',
@@ -607,7 +633,7 @@ function playbookHtml(R){
   var P=buildPlaybooks(R),h='<div class="ghead" style="margin-top:6px"><h2>Vender mais: táticas prontas</h2><p>As táticas que mais combinam com os seus números aparecem primeiro. Toque em cada uma para ver o passo a passo.</p></div>';
   P.forEach(function(p,i){
     var pill=p.rec?'<span class="pill s-warn">Recomendado para você</span>':'<span class="pill s-info">'+(p.tag||'Oportunidade')+'</span>';
-    h+='<details class="pcard pb"'+(i===0?' open':'')+'><summary><h3>'+p.t+'</h3>'+pill+'</summary><p class="read">'+p.why+'</p>'+
+    h+='<details class="pcard pb"'+(i===0?' open':'')+'><summary><h3>'+p.t+'</h3>'+pill+'</summary><p class="read"><b>Em palavras simples:</b> '+p.def+'</p><p class="read">'+p.why+'</p>'+
       p.blocks.map(function(b){return '<div class="sub">'+b.t+'</div><ul class="acoes">'+b.l.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>'}).join('')+
       '<p class="foot"><b>Como medir:</b> '+p.med+'</p></details>';
   });
@@ -649,7 +675,10 @@ function renderPlan(){
   if(rest.length){
     h+='<div class="todo"><h3>Outros pontos</h3><ul class="ok" style="padding:0;margin:0">'+rest.map(function(a){var s=SEV[a.s];return '<li><b>'+a.t+'</b> <span class="pill s-'+s[0]+'" style="margin-left:6px">'+s[1]+'</span><br><span class="help">'+a.diag+' '+a.meta+'</span></li>'}).join('')+'</ul></div>';
   }
+  h+='<details class="pcard pb"><summary><h3>Glossário: termos usados neste plano</h3></summary><ul class="acoes">'+['<b>CAC</b> (custo de aquisição de cliente): quanto você gastou, em média, para conquistar um cliente novo.','<b>LTV</b> (valor do cliente ao longo do tempo): quanto um cliente gera de faturamento durante todo o período em que compra com você. O LTV em lucro desconta os custos variáveis.','<b>LTV/CAC</b>: quantos reais voltam em lucro para cada R$ 1 gasto para conquistar um cliente.','<b>Ticket médio</b>: valor médio de cada pedido.','<b>Margem de contribuição</b>: do que você vende, a parte que sobra depois dos custos variáveis, para pagar os custos fixos e gerar lucro.','<b>Ponto de equilíbrio</b>: o faturamento mínimo para cobrir todos os custos fixos e não ter prejuízo.','<b>Cross-sell</b> (venda cruzada): sugerir um item complementar ao que o cliente já vai comprar.','<b>Upsell</b>: oferecer uma versão melhor ou maior do que o cliente ia levar.','<b>SPIN Selling</b>: técnica de venda por perguntas (Situação, Problema, Implicação, Necessidade).','<b>Chatbot</b> (robô de atendimento): programa que responde mensagens automaticamente.','<b>Teste A/B</b>: comparar dois jeitos de fazer a mesma coisa por um tempo e ficar com o que dá melhor resultado.'].map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></details>';
   h+='<p class="foot">As referências (por exemplo, LTV/CAC de 3x ou folga de 20%) são pontos de partida de trabalho e variam por farmácia e região. As ações são sugestões de gestão e não substituem a orientação do farmacêutico responsável, do contador ou da assessoria jurídica. Respeite sempre a prescrição e as normas da Anvisa e do CRF.</p>';
+  h+='<div class="note" id="contato"><p><b>Quer conversar sobre os seus números?</b></p><p>Fale comigo: <b>Moisés Carvalho</b>, Consultor Sebrae.<br>WhatsApp: <b>(11) 2090-4264</b></p>'+
+    '<a href="https://wa.me/551120904264" target="_blank" rel="noopener" style="align-self:flex-start;background:var(--accent);color:var(--accent-ink);padding:9px 16px;border-radius:8px;text-decoration:none;font-weight:600">Chamar no WhatsApp</a></div>';
   h+='<div class="actions"><button type="button" id="back">Voltar e ajustar os números</button><button type="button" id="copyPlan">Copiar plano de ação</button></div><p class="foot" id="planOk" hidden></p></div>';
   $('view-plano').innerHTML=h;
   window.__plan={top:top,nome:nome,per:per};
@@ -658,7 +687,7 @@ function renderPlan(){
   $('copyPlan').onclick=function(){
     var t=['PLANO DE AÇÃO'+(per?' - '+per:''),''];
     top.forEach(function(a,i){t.push((i+1)+'. '+a.t);t.push('   Onde está: '+a.diag);t.push('   Meta 90 dias: '+a.meta);t.push('   Impacto: '+a.imp);a.acoes.forEach(function(x){t.push('   - '+x)});t.push('')});
-    copyText(t.join('\n'),$('planOk'),'Plano copiado.');
+    t.push('Quer conversar sobre os seus números? Moisés Carvalho, Consultor Sebrae. WhatsApp (11) 2090-4264.');copyText(t.join('\n'),$('planOk'),'Plano copiado.');
   };
   $('view-plano').querySelectorAll('[data-chk]').forEach(function(el){el.onchange=function(){var o=chkLoad();o[el.dataset.chk]=el.checked;chkSave(o)}});
 }
