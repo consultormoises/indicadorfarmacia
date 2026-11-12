@@ -140,6 +140,11 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .code{width:100%;min-height:84px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:10px;resize:vertical}
 .note{background:var(--accent-soft);border-radius:10px;padding:12px 14px;font-size:14px;display:flex;flex-direction:column;gap:8px}
 
+details.pb summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+details.pb summary::-webkit-details-marker{display:none}
+details.pb summary h3{font-size:17px}
+details.pb summary:focus-visible{outline:3px solid var(--accent);outline-offset:4px;border-radius:6px}
+details.pb[open] summary{margin-bottom:2px}
 /* painel */
 .kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
@@ -194,7 +199,7 @@ td button{padding:4px 9px;font-size:12.5px}
             <label for="f-nome">Primeiro nome</label>
             <div class="inp"><input id="f-nome" type="text" maxlength="40" placeholder="Ex.: Mariana" autocomplete="given-name"></div>
           </div>
-          <label class="check" for="f-aceite"><input id="f-aceite" type="checkbox"><span>Concordo em registrar meu primeiro nome e os indicadores calculados (taxas, tickets e relações) para acompanhamento. Nenhum valor bruto de faturamento ou de custos é enviado. Posso pedir a exclusão a quem me passou este link.</span></label>
+          <label class="check" for="f-aceite"><input id="f-aceite" type="checkbox"><span>Concordo que meu primeiro nome e os indicadores calculados (taxas, tickets e relações) possam ser registrados para acompanhamento. Nenhum valor bruto de faturamento ou de custos é enviado. Posso pedir a exclusão a quem me passou este link.</span></label>
           <p class="err" id="finErr" hidden></p>
           <div class="actions"><button type="button" class="primary big" id="concluir">Concluir e ver meu plano de ação</button></div>
         </div>
@@ -242,13 +247,15 @@ var GROUPS=[
   {id:'cv',type:'brl',pre:'R$',label:'Custos variáveis totais',help:'Mudam conforme você vende: insumos e matérias-primas, embalagens, impostos sobre a venda, comissões, taxas de cartão, frete e entrega.',ph:'0,00',ex:112000}]},
  {t:'Relacionamento com o cliente',d:'Estimativas de quanto um cliente fica com você.',items:[
   {id:'freq',type:'dec',suf:'compras por ano',label:'Compras médias por cliente por ano',help:'Em média, quantas vezes um cliente volta a comprar em 12 meses. A renovação de um tratamento conta como nova compra.',ph:'0',ex:2.8},
-  {id:'tempo',type:'dec',suf:'anos',label:'Tempo médio de relacionamento',help:'Por quantos anos, em média, um cliente continua comprando com você. Pode usar decimais (1,5).',ph:'0',ex:1.8}]}
+  {id:'tempo',type:'dec',suf:'meses',label:'Tempo médio de relacionamento',help:'Por quantos meses, em média, um cliente continua comprando com você. Por exemplo, 24 para dois anos.',ph:'0',ex:22}]}
 ];
 var IDS=[],META={};
 GROUPS.forEach(function(g){g.items.forEach(function(i){META[i.id]=i;if(i.id!=='periodo')IDS.push(i.id)})});
 var KEY='diag-farmacia-v2',CHK='diag-farmacia-chk-v2';
 var state={vals:{},example:true,nome:'',aceite:false,done:false,reg:null,code:''};
 var db=null,usr=null,isAdmin=false,unsubPainel=null;
+/* Envio silencioso opcional (Google Forms). Deixe url vazio para desligar. */
+var FORM={url:'',nome:'entry.0',codigo:'entry.1'};
 
 function parse(s){
   if(s==null)return null;s=String(s).trim().replace(/[^\d.,]/g,'');if(!s)return null;
@@ -283,8 +290,8 @@ GROUPS.forEach(function(g){
 function loadExample(){state.vals={};IDS.concat('periodo').forEach(function(id){var e=META[id].ex;state.vals[id]=META[id].type==='text'?e:fmtInput(id,e)});state.example=true}
 function clearAll(){state.vals={};state.example=false}
 function syncInputs(){box.querySelectorAll('input').forEach(function(el){el.value=state.vals[el.dataset.id]||''});$('f-nome').value=state.nome||'';$('f-aceite').checked=!!state.aceite}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
-function restore(){try{var s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.vals){state=Object.assign(state,s);return true}}catch(e){}return false}
+function save(){try{sessionStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function restore(){try{var s=JSON.parse(sessionStorage.getItem(KEY)||'null');if(s&&s.vals){state=Object.assign(state,s);return true}}catch(e){}return false}
 
 box.addEventListener('input',function(e){var id=e.target.dataset.id;if(!id)return;state.vals[id]=e.target.value;state.example=false;update()});
 box.addEventListener('focusout',function(e){var id=e.target.dataset.id;if(!id||META[id].type==='text')return;var n=parse(e.target.value);e.target.value=fmtInput(id,n);state.vals[id]=e.target.value;update()});
@@ -319,7 +326,7 @@ var IND=[
   read:function(v){return 'De cada 100 atendimentos, '+nf1.format(Math.round(v*1000)/10)+' terminam em venda.'}},
  {g:'Custo e valor de um cliente',id:'cac',name:'CAC: custo para conquistar um cliente',fmt:'brl',how:'(Marketing + comercial para novos clientes) ÷ novos clientes',nums:['mkt','vendasNovos'],dens:['novos'],f:function(){return (num('mkt')+num('vendasNovos'))/num('novos')},
   read:function(v){return 'Trazer cada cliente novo custou '+brl.format(v)+'.'}},
- {g:'Custo e valor de um cliente',id:'ltv',name:'LTV: receita de um cliente',fmt:'brl',how:'Ticket médio × compras por ano × anos de relacionamento',nums:['fat','freq','tempo'],dens:['vendas'],f:function(){return num('fat')/num('vendas')*num('freq')*num('tempo')},
+ {g:'Custo e valor de um cliente',id:'ltv',name:'LTV: receita de um cliente',fmt:'brl',how:'Ticket médio × compras por ano × (meses de relacionamento ÷ 12)',nums:['fat','freq','tempo'],dens:['vendas'],f:function(){return num('fat')/num('vendas')*num('freq')*num('tempo')/12},
   read:function(v){return 'Ao longo do relacionamento, um cliente gera cerca de '+brl.format(v)+' de faturamento.'}},
  {g:'Custo e valor de um cliente',id:'ltvl',name:'LTV em lucro',fmt:'brl',how:'LTV de receita × margem de contribuição',needs:['ltv','margem'],f:function(r){return r.ltv*r.margem},
   read:function(v){return 'Desse total, sobram '+brl.format(v)+' por cliente depois dos custos variáveis.'}},
@@ -444,10 +451,10 @@ function buildPlan(R){
       ind:'CAC e LTV/CAC, medidos todo mês.'});
   }
   if(freq!=null&&tempo!=null&&R.ltv!=null){
-    var s2=freq<2?3:(freq<4||tempo<2)?2:0,ltvNovo=tk*(freq+0.5)*(tempo+0.5);
+    var s2=freq<2?3:(freq<4||tempo<24)?2:0,ltvNovo=tk*(freq+0.5)*((tempo+6)/12);
     A.push({k:'recompra',t:'Recompra e permanência dos clientes',s:s2,
-      diag:'Em média cada cliente compra '+nf1.format(freq)+' vezes por ano e fica '+nf1.format(tempo)+' anos. Como muitos tratamentos são contínuos, a renovação é a maior alavanca de receita.',
-      meta:'Subir a recompra em 0,5 compra por ano (de '+nf1.format(freq)+' para '+nf1.format(freq+0.5)+') e o relacionamento em 0,5 ano.',
+      diag:'Em média cada cliente compra '+nf1.format(freq)+' vezes por ano e fica '+nf0.format(Math.round(tempo))+' meses. Como muitos tratamentos são contínuos, a renovação é a maior alavanca de receita.',
+      meta:'Subir a recompra em 0,5 compra por ano (de '+nf1.format(freq)+' para '+nf1.format(freq+0.5)+') e o relacionamento em 6 meses.',
       imp:'O LTV de receita por cliente subiria de '+brl0.format(R.ltv)+' para cerca de '+brl0.format(ltvNovo)+'.',
       acoes:['Registre a data prevista de término de cada tratamento contínuo e avise o cliente 5 a 7 dias antes, por WhatsApp, oferecendo a renovação.',
         'Ofereça a entrega programada de tratamentos de uso contínuo, com o cliente confirmando por mensagem a cada ciclo.',
@@ -465,6 +472,7 @@ function buildPlan(R){
       imp:s3?'Cerca de '+nf0.format(Math.round(extra))+' vendas a mais e '+brl0.format(extra*tk)+' de faturamento por período, sem gastar mais para atrair gente.':'Cada ponto percentual a mais vale cerca de '+brl0.format(orc*0.01*tk)+' de faturamento por período.',
       acoes:['Entregue o orçamento no mesmo atendimento, com valor, prazo de entrega e forma de pagamento claros. Orçamento que "fica de ficar pronto" costuma esfriar.',
         'Faça retorno em até 24 horas para todo orçamento não aprovado, por WhatsApp, perguntando se ficou alguma dúvida.',
+        'Use a técnica SPIN nas conversas (roteiro no bloco "Vender mais", mais abaixo): primeiro perguntas, depois o preço.',
         'Mostre o valor por dia de tratamento e ofereça parcelamento ou Pix, em vez de apresentar só o total.',
         'Anote o motivo de cada orçamento perdido (preço, prazo, dúvida, foi para outra farmácia) e revise a lista toda semana.',
         'Treine o balcão para explicar o que diferencia a farmácia: matéria-prima de fornecedor qualificado, controle de qualidade e acompanhamento do farmacêutico. Nunca sugira alterar a prescrição.'],
@@ -524,9 +532,91 @@ function buildPlan(R){
   return A;
 }
 
+
+function buildPlaybooks(R){
+  var tk=R.ticket,freq=num('freq'),tempo=num('tempo'),P=[];
+  var lowTk=tk!=null&&tk<150,lowConv=(R.c2!=null&&R.c2<0.6)||(R.c3!=null&&R.c3<0.3),lowRec=freq!=null&&freq<4,lowRel=(tempo!=null&&tempo<24)||lowRec;
+  P.push({k:'spin',rec:lowConv,t:'Técnica SPIN para converter mais orçamentos',
+    why:(R.c2!=null?'De cada 100 orçamentos, '+nf1.format(Math.round(R.c2*1000)/10)+' viram venda. ':'')+'O SPIN faz o cliente perceber o valor do tratamento antes de ouvir o preço.',
+    blocks:[{t:'Roteiro de perguntas',l:[
+      'Situação: entenda o contexto com 2 ou 3 perguntas curtas. Exemplos: "Há quanto tempo você convive com isso?" e "O que você já usou até agora?".',
+      'Problema: descubra o que incomoda. Exemplos: "O que menos te agrada no resultado atual?" e "O que você gostaria que fosse diferente?".',
+      'Implicação: mostre o efeito de não resolver. Exemplos: "Como isso tem afetado sua rotina?" e "O que acontece se continuar assim por mais alguns meses?". Não faça promessa de cura nem de resultado.',
+      'Necessidade de solução: deixe o cliente dizer o benefício. Exemplo: "Se o tratamento fosse feito sob medida para você, o que mudaria no seu dia a dia?".',
+      'Só depois apresente o orçamento, ligando cada item ao que o cliente disse, e feche com: "Faz sentido para você começar assim?".',
+      'Treine a equipe em duplas, 15 minutos por semana, e anote as perguntas que mais funcionam.']}],
+    med:'Taxa de orçamentos aprovados por atendente, antes e depois do treino (mínimo de 4 semanas).'});
+  P.push({k:'cross',rec:lowTk,t:'Cross-sell para aumentar o ticket',
+    why:(tk!=null?'Seu ticket médio é '+brl.format(tk)+'. ':'')+'Oferecer um item complementar relevante aumenta o valor do pedido sem precisar de mais clientes.',
+    blocks:[{t:'Como fazer',l:[
+      'Defina, para cada fórmula ou tratamento mais vendido, 1 ou 2 complementos coerentes (por exemplo, fotoprotetor, higiene e hidratação, suplemento pronto de venda livre).',
+      'Faça uma única sugestão por atendimento, na hora do orçamento e ligada ao que o cliente contou: "Para esse tratamento, muita gente usa também...". Sugestão demais afasta.',
+      'Monte kits com preço fechado (tratamento mais complemento) e mostre o valor por dia de uso.',
+      'Dê ao balcão um cartão com os complementos de cada linha e uma meta simples: 3 em cada 10 pedidos com pelo menos um item a mais.',
+      'Respeite sempre a prescrição: não substitua nem altere itens prescritos e deixe o farmacêutico validar as sugestões de saúde.']}],
+    med:'Ticket médio e percentual de pedidos com 2 ou mais itens, por semana.'});
+  P.push({k:'estetica',rec:false,t:'Upsell para quem busca estética sem receita',
+    why:'Quem chega querendo cuidar da pele ou da aparência sem receita costuma comprar um item só. Uma rotina completa melhora a experiência e o valor do pedido.',
+    blocks:[{t:'Como fazer',l:[
+      'Comece pelo objetivo do cliente, com as perguntas do SPIN, e ofereça apenas produtos de venda livre e cosméticos permitidos, sem indicar medicamentos que exigem prescrição.',
+      'Transforme o item único em uma rotina: limpeza, tratamento e proteção, com opções de 30, 60 e 90 dias e condição melhor nos períodos maiores.',
+      'Ofereça upgrade de versão (tamanho maior, linha premium ou refil) mostrando o custo por dia de uso.',
+      'Proponha um retorno em 30 dias para avaliar o uso, se a farmácia tiver farmacêutico habilitado para esse atendimento.',
+      'Para queixas que pedem avaliação médica ou prescrição, encaminhe a um dermatologista parceiro e volte a atender o cliente com a receita.',
+      'Confira as regras da Anvisa e do CRF antes de divulgar resultados, fotos de antes e depois ou promoções.']}],
+    med:'Ticket médio desse público e quantos voltam em até 45 dias.'});
+  P.push({k:'recompra',rec:lowRec,t:'Estratégia de recompra',
+    why:(freq!=null?'Cada cliente compra '+nf1.format(freq)+' vezes por ano. ':'')+'Aumentar a recorrência é a forma mais barata de crescer, porque o cliente já conhece a farmácia.',
+    blocks:[{t:'Como fazer',l:[
+      'No cadastro, registre o tratamento, a data da entrega e a duração prevista, para saber quando ele termina.',
+      'Envie um lembrete de renovação 5 a 7 dias antes do fim, por WhatsApp, com o valor e uma frase pronta para confirmar ("Posso renovar igual?").',
+      'Ofereça entrega programada (a cada 30, 60 ou 90 dias) com confirmação rápida do cliente.',
+      'Faça um contato de acompanhamento 7 a 15 dias após a primeira entrega, para tirar dúvidas e reforçar o uso.',
+      'Crie um clube simples, com pontos ou desconto progressivo para quem renova em dia, sem comprometer a margem.',
+      'Meta inicial: mais 0,5 compra por cliente por ano em 90 dias.']}],
+    med:'Taxa de renovação (quantos renovam entre os que terminaram o tratamento) e compras por cliente por ano.'});
+  P.push({k:'reativa',rec:lowRel,t:'Reativação de clientes inativos',
+    why:(R.cac!=null?'Trazer um cliente novo custa '+brl.format(R.cac)+'. Reativar um cliente antigo costuma custar bem menos. ':'Reativar um cliente antigo costuma custar menos que conquistar um novo. ')+(tk!=null&&freq!=null?'Cada cliente que volta rende cerca de '+brl0.format(tk*freq)+' por ano.':''),
+    blocks:[{t:'Como fazer',l:[
+      'Liste quem não compra há 90 dias e quem não compra há 180 dias, separando pelo último tratamento.',
+      'Mande uma mensagem pessoal por WhatsApp, com o primeiro nome e o motivo: "Oi, Ana, faz um tempo desde o seu último tratamento. Como você está? Posso ajudar com a reposição?".',
+      'Dê uma razão para voltar além do desconto: revisão do tratamento com o farmacêutico, reposição pelo mesmo valor ou entrega sem custo.',
+      'Faça até 3 contatos em 15 dias, com 5 dias de intervalo, e pare quando a pessoa pedir ou não responder.',
+      'Contate só quem autorizou receber mensagens e inclua sempre a opção de sair da lista (LGPD).',
+      'Meta inicial: reativar 10% da lista em 60 dias, como ponto de partida para ajustar.']}],
+    med:'Taxa de reativação (quantos compraram de novo) e receita recuperada por campanha.'});
+  P.push({k:'robo',rec:false,tag:'Teste sugerido',t:'Atendimento com robô: cuidados e teste',
+    why:'Um robô pode responder mais rápido, mas só compensa se aumentar as vendas sem piorar a experiência. Teste antes de adotar.',
+    blocks:[{t:'Cuidados com o robô',l:[
+      'Apresente-se como assistente virtual na primeira mensagem e ofereça falar com uma pessoa a qualquer momento.',
+      'Limite o robô a informações da farmácia: horários, prazos, orçamento por foto e status do pedido. Dúvidas de saúde, dose e uso passam para o farmacêutico.',
+      'Não peça dados além do necessário (primeiro nome e o essencial do pedido) e explique para que serão usados.',
+      'Passe para uma pessoa quando o cliente repetir a pergunta, demonstrar irritação ou pedir um orçamento de valor alto.',
+      'Revise as conversas toda semana e corrija as respostas que geraram dúvida.']},
+      {t:'Como testar a conversão',l:[
+      'Teste 1, humano com humano: por 4 semanas, metade dos atendentes usa o roteiro SPIN e a outra metade atende como sempre. Compare as taxas.',
+      'Teste 2, humano com robô: divida os contatos por dia (dias ímpares com robô na triagem e passagem para pessoa, dias pares só com pessoa). Mantenha o resto igual.',
+      'Meça nos dois grupos: contatos que viram orçamento, orçamentos aprovados, ticket médio, tempo até a primeira resposta e satisfação do cliente.',
+      'Use ao menos 100 contatos por grupo antes de concluir, mude uma coisa de cada vez e só adote o que melhorar a conversão sem piorar a satisfação.']}],
+    med:'Conversão de atendimento em orçamento e de orçamento em venda, em cada grupo do teste.'});
+  P.forEach(function(p,i){p.o=i});
+  P.sort(function(a,b){return (b.rec?1:0)-(a.rec?1:0)||a.o-b.o});
+  return P;
+}
+function playbookHtml(R){
+  var P=buildPlaybooks(R),h='<div class="ghead" style="margin-top:6px"><h2>Vender mais: táticas prontas</h2><p>As táticas que mais combinam com os seus números aparecem primeiro. Toque em cada uma para ver o passo a passo.</p></div>';
+  P.forEach(function(p,i){
+    var pill=p.rec?'<span class="pill s-warn">Recomendado para você</span>':'<span class="pill s-info">'+(p.tag||'Oportunidade')+'</span>';
+    h+='<details class="pcard pb"'+(i===0?' open':'')+'><summary><h3>'+p.t+'</h3>'+pill+'</summary><p class="read">'+p.why+'</p>'+
+      p.blocks.map(function(b){return '<div class="sub">'+b.t+'</div><ul class="acoes">'+b.l.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul>'}).join('')+
+      '<p class="foot"><b>Como medir:</b> '+p.med+'</p></details>';
+  });
+  return h;
+}
+
 var SEV={3:['bad','Prioridade alta'],2:['warn','Prioridade média'],1:['info','Oportunidade'],0:['good','Em dia']};
-function chkLoad(){try{return JSON.parse(localStorage.getItem(CHK)||'{}')}catch(e){return {}}}
-function chkSave(o){try{localStorage.setItem(CHK,JSON.stringify(o))}catch(e){}}
+function chkLoad(){try{return JSON.parse(sessionStorage.getItem(CHK)||'{}')}catch(e){return {}}}
+function chkSave(o){try{sessionStorage.setItem(CHK,JSON.stringify(o))}catch(e){}}
 
 function renderPlan(){
   var C=compute(),R=C.R,A=buildPlan(R),top=A.filter(function(a){return a.s>0}).slice(0,3),rest=A.filter(function(a){return top.indexOf(a)<0});
@@ -537,7 +627,7 @@ function renderPlan(){
   /* status do registro */
   if(state.reg==='salvo')h+='<div class="note"><p><b>Resposta registrada.</b> Seu primeiro nome e os indicadores calculados foram enviados. Se você enviar de novo, a resposta anterior é atualizada.</p></div>';
   else if(state.reg==='exemplo')h+='<div class="note"><p><b>Resposta não registrada.</b> Você usou dados de exemplo, então nada foi enviado. Limpe o exemplo, coloque seus números e conclua de novo.</p></div>';
-  else if(state.reg==='codigo')h+='<div class="note"><p><b>Falta um passo para registrar sua resposta.</b> Neste acesso o envio direto não está disponível. Copie o código abaixo e mande para quem compartilhou este diagnóstico com você. O código tem só seu primeiro nome e os indicadores calculados.</p><textarea class="code" id="codeBox" readonly aria-label="Código da resposta">'+esc(state.code||'')+'</textarea><div class="actions"><button type="button" id="copyCode" class="primary">Copiar código</button></div><p class="foot" id="codeOk" hidden></p></div>';
+
 
   if(!top.length)h+='<div class="pcard"><h3>Nenhum ponto crítico</h3><p>Os indicadores estão em boa situação. Use as oportunidades abaixo para crescer.</p></div>';
   top.forEach(function(a,i){
@@ -548,6 +638,7 @@ function renderPlan(){
       '<p class="foot"><b>Como acompanhar:</b> '+a.ind+'</p></article>';
   });
 
+  h+=playbookHtml(R);
   /* primeiro mês */
   var chk=chkLoad(),items=[];
   top.forEach(function(a){a.acoes.slice(0,2).forEach(function(x,j){items.push({id:a.k+j,t:x})})});
@@ -606,11 +697,12 @@ $('concluir').onclick=async function(){
   state.code=mkCode(payload);state.done=true;
   if(state.example){state.reg='exemplo'}
   else{
-    state.reg='codigo';
+    state.reg='nenhum';
     try{
       var uid=usr?await usr.id():null;
       if(db&&uid){await db.doc('respostas/'+uid).set({nome:fn,em:payload.em,ind:payload.i,origem:'direto'});state.reg='salvo'}
-    }catch(e){state.reg='codigo'}
+    }catch(e){state.reg='nenhum'}
+    if(state.reg!=='salvo'&&FORM.url){try{var body=new URLSearchParams();body.set(FORM.nome,fn);body.set(FORM.codigo,state.code);await fetch(FORM.url,{method:'POST',mode:'no-cors',body:body});state.reg='form'}catch(e){}}
   }
   save();update();renderPlan();showTab('plano');
 };
@@ -675,7 +767,7 @@ function initPainel(){
 }
 
 /* ---------- início ---------- */
-if(!restore())loadExample();
+if(!restore()){clearAll()}
 syncInputs();update();
 if(state.done)$('tab-plano').disabled=false;
 (async function(){
