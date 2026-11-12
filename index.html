@@ -258,7 +258,7 @@ var KEY='diag-farmacia-v3',CHK='diag-farmacia-chk-v3';
 var state={vals:{},example:true,nome:'',aceite:false,done:false,reg:null,code:''};
 var db=null,usr=null,isAdmin=false,unsubPainel=null;
 /* Envio silencioso opcional (Google Forms). Deixe url vazio para desligar. */
-var FORM={url:'',nome:'entry.0',codigo:'entry.1'};
+var FORM={url:'https://docs.google.com/forms/d/e/1FAIpQLSeTODEZux6yu3CoJGNbxBde-4EhdMkDyLrH5MV0xjkNSgX5Tg/formResponse',nome:'entry.569906471',codigo:'entry.1404490304'};
 
 function parse(s){
   if(s==null)return null;s=String(s).trim().replace(/[^\d.,]/g,'');if(!s)return null;
@@ -301,8 +301,8 @@ box.addEventListener('focusout',function(e){var id=e.target.dataset.id;if(!id||M
 $('form').addEventListener('submit',function(e){e.preventDefault()});
 $('f-nome').addEventListener('input',function(e){state.nome=e.target.value;save()});
 $('f-aceite').addEventListener('change',function(e){state.aceite=e.target.checked;save()});
-$('reset').onclick=function(){clearAll();state.done=false;state.reg=null;syncInputs();update();showTab('diag')};
-$('clearEx').onclick=function(){clearAll();state.done=false;state.reg=null;syncInputs();update();$('f-periodo').focus()};
+$('reset').onclick=function(){clearAll();state.done=false;state.reg=null;state.fsent=false;syncInputs();update();showTab('diag')};
+$('clearEx').onclick=function(){clearAll();state.done=false;state.reg=null;state.fsent=false;syncInputs();update();$('f-periodo').focus()};
 $('example').onclick=function(){loadExample();syncInputs();update()};
 
 var CHECKS=[
@@ -652,6 +652,7 @@ function renderPlan(){
 
   /* status do registro */
   if(state.reg==='salvo')h+='<div class="note"><p><b>Resposta registrada.</b> Seu primeiro nome e os indicadores calculados foram enviados. Se você enviar de novo, a resposta anterior é atualizada.</p></div>';
+  else if(state.reg==='form')h+='<div class="note"><p><b>Resposta registrada.</b> Seu primeiro nome foi enviado ao responsável pelo diagnóstico. Nenhum outro dado pessoal foi coletado.</p></div>';
   else if(state.reg==='exemplo')h+='<div class="note"><p><b>Resposta não registrada.</b> Você usou dados de exemplo, então nada foi enviado. Limpe o exemplo, coloque seus números e conclua de novo.</p></div>';
 
 
@@ -731,7 +732,8 @@ $('concluir').onclick=async function(){
       var uid=usr?await usr.id():null;
       if(db&&uid){await db.doc('respostas/'+uid).set({nome:fn,em:payload.em,ind:payload.i,origem:'direto'});state.reg='salvo'}
     }catch(e){state.reg='nenhum'}
-    if(state.reg!=='salvo'&&FORM.url){try{var body=new URLSearchParams();body.set(FORM.nome,fn);body.set(FORM.codigo,state.code);await fetch(FORM.url,{method:'POST',mode:'no-cors',body:body});state.reg='form'}catch(e){}}
+    if(state.reg!=='salvo'&&FORM.url&&!state.fsent){try{var body=new URLSearchParams();body.set(FORM.nome,fn);body.set(FORM.codigo,state.code);await fetch(FORM.url,{method:'POST',mode:'no-cors',body:body});state.fsent=true;state.reg='form'}catch(e){}}
+    else if(state.fsent&&state.reg!=='salvo')state.reg='form';
   }
   save();update();renderPlan();showTab('plano');
 };
